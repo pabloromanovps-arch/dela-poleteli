@@ -1,29 +1,78 @@
-# Ставки и нормы агентства — заполняет владелец. Смета берёт цифры только отсюда.
+# Ставки агентства. Источник: приложение владельца «Смета PRO» (офлайн-калькулятор,
+# московские ставки за смену, без НДС/налога). Смета берёт цифры ТОЛЬКО отсюда.
+# null — ставки в «Смете PRO» нет: спросить владельца, не придумывать.
+source: "Смета PRO (A1BCB582B0_PRO.html), раздел WIZ_SPECIALISTS + RATES"
 currency: RUB
-day_rate:            # ставка за рабочий день по ролям
+
+# Наценки — как в «Смете PRO»:
+# Строка = Кол-во × Смен × Цена × Коэф.
+# Раздел = Σ строк (+ наценка раздела)
+# Прямые → + Непредвиденные % → + Комиссия % (от прямые+непредвиденные) → ПОДИТОГ
+#        → − Скидка % → + Налог % (gross-up: ИТОГ = подитог / (1 − налог)) → ИТОГ
+markup:
+  contingency_pct: 3
+  commission_pct: 15
+  commission_base: subtotal     # subtotal = прямые + непредвиденные; direct = только прямые
+  tax_pct: 7
+  tax_mode: gross               # gross = гросс-ап, add = сверху, extract = выделить
+  discount_pct: 0
+revision_rounds_included: 2
+
+# Ставка за смену по ролям агентства
+day_rate:
+  motion-designer: 95000          # «Моушн-дизайнер (смена)»
+  designer: 70000                 # «2D-дизайнер (подготовка слоёв и графики)»
+  cg-generalist: 110000           # «3D-дизайнер / 3D-визуализация»
+  editor: 90000                   # «Режиссёр монтажа»
   account-manager: null
   producer: null
   strategist: null
-  creative-director: null
+  creative-director: null         # в «Смете PRO» только за проект — см. per_project
   art-director: null
-  copywriter: null
+  copywriter: null                # за проект — см. per_project
   concept-artist: null
-  designer: null
   storyboard-artist: null
-  motion-designer: null
-  cg-generalist: null
   compositor: null
-  editor: null
-  colorist: null
-  sound-designer: null
+  colorist: null                  # за проект
+  sound-designer: null            # за проект; на площадке — см. onsite
   technical-director: null
-  qc-supervisor: null
-norms:               # нормы на единицу, дни (уточняются по фактам проектов)
-  styleframe: null
-  storyboard_shot: null
-  motion_shot_per_complexity_point_10s: null
-  template_version: null
-render_hour: null
-project_management_pct: 12
-risk_reserve_pct: 15
-revision_rounds_included: 2
+  qc-supervisor: null             # есть позиция «за файл» — см. per_unit
+
+# Позиции за проект (вилка: разные типы проектов в «Смете PRO»)
+per_project:
+  creative_director: [90000, 120000]
+  script: [90000, 180000]                 # сценарий (сценарист)
+  edit_full: [160000, 240000]             # монтаж (сборка фильма)
+  edit_rough_archive: 90000               # черновой монтаж из архива
+  edit_final_archive: 140000              # чистовой монтаж
+  motion_graphics_titles: [80000, 110000] # моушн-графика, титры
+  color_grading: [70000, 85000]
+  sound_design_mix: [90000, 95000]
+  voiceover_record_mix: 45000
+  music_licensing: 60000
+  format_adaptations: 65000
+  archive_restore_upscale: 60000
+  festival_materials_subtitles: 40000
+
+per_unit:
+  delivery_file_qc: 18000                 # сдача файлов под сетки (контроль качества), за файл
+  render_hour: 2500                       # рендер-ферма, за час
+
+# Площадка и трансляции, за смену
+onsite:
+  broadcast_director: 120000
+  media_server_operator: 60000
+  led_engineer: 75000
+  content_supervisor: 45000
+  test_run: 35000
+  sound_engineer_onsite: [55000, 60000]
+
+# Съёмочная группа (если проект со съёмкой), за смену
+shoot:
+  director: [120000, 240000]
+  dop: [140000, 280000]
+  second_camera: [110000, 120000]
+  production_designer: [90000, 95000]
+  script_supervisor: 30000
+  host: 150000
+  casting_project: [70000, 90000]
