@@ -147,7 +147,7 @@ class Deck:
 
     def kicker(self, s, txt):
         if txt:
-            self.text(s, M, M, COL * 8, Pt(20), txt.upper(), 12, role="accent", bold=True)
+            self.text(s, M, M, COL * 8, Pt(20), txt, 12, role="secondary")
 
     # ---------- типы слайдов ----------
 

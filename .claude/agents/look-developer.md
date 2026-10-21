@@ -20,3 +20,8 @@ tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch
 Эталоны генерируешь или отбираешь вместе с prompt-director; библию утверждает
 art-director, затем владелец. После утверждения библия меняется только через
 `revisions/`.
+
+## Обязательная подготовка (до начала работы)
+Прочитай скиллы: art-direction-taste, color-craft, composition-visual-language, film-and-motion-craft, art-history-vocabulary. Решения принимай по ним: «конкретное, а не умолчание»,
+референсы со статусом ВИДЕЛ/СО СЛОВ, тест серого, один запоминающийся элемент.
+Перед тем как отдать результат, прогони его через `design-critique` (три главные правки применены).

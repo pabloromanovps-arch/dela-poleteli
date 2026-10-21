@@ -21,3 +21,7 @@ projects/*/08_delivery/**/*.mov
 projects/*/ai/gens/**
 !projects/*/ai/gens/.gitkeep
 projects/*/ai/shots/**/*.mp4
+
+# книги владельца — не в git (авторские права)
+references/books/*
+!references/books/.gitkeep
