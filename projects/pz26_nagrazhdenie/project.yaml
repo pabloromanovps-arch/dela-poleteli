@@ -8,13 +8,19 @@ stage: 00_brief
 tasks:             # передача работы между ролями — см. agency-orchestration
   - {id: t001, role: producer, task: "бриф по intake.md (после ответов клиента на client/letters/01_questions.md; до ответов — черновик с пометками «уточняется»)",
      in: [00_brief/intake.md, 00_brief/TEST_RUN.md, client/letters/01_questions.md],
-     out: [00_brief/brief.md], status: todo, from: account-manager}
+     out: [00_brief/brief.md], status: done, from: account-manager}   # бриф написан продюсером; ворота 00 ждут владельца
   - {id: t002, role: strategist, task: "стратегия по исходникам клиента (ТЗ, концепция фильма, концепция премии)",
      in: [00_brief/source/tz_semka.txt, 00_brief/source/koncepciya_filma.txt, 00_brief/source/koncepciya_premii.txt, 00_brief/TEST_RUN.md],
      out: [01_research/strategy.md], status: done, from: account-manager}
   - {id: t003, role: creative-director, task: "идеи (2-3 направления) по стратегии: инсайт про жест и эстафету ключа, обход клише из п.4.4, решение вызова «35 лауреатов без 35 интервью»; экраны, хронометраж, связь с 4 эпохами — допущения до ответов клиента",
      in: [01_research/strategy.md, 00_brief/source/koncepciya_filma.txt, 00_brief/source/koncepciya_premii.txt, 00_brief/TEST_RUN.md],
-     out: [02_concept/ideas.md], status: todo, from: strategist}
+     out: [02_concept/ideas.md], status: done, from: strategist}   # 8 идей, отобраны: 1 Заготовка (рекомендована), 3 Эстафета, 2 Семь ключей
+  - {id: t005, role: art-director, task: "визуальные направления и концепт по 3 отобранным идеям (Заготовка, Эстафета, Семь ключей): крючок, палитра из brand.yaml, типографика, материал, свет, язык движения, ритм, референсы из references/, производство Blender+AE, риски, рекомендация",
+     in: [02_concept/ideas.md, 01_research/strategy.md, brands/pz_premiya/brand.yaml], out: [02_concept/concept.md], status: todo, from: creative-director}
+  - {id: t006, role: copywriter, task: "сценарий (4 части, 7 категорий по 5 лауреатов, финал) и текст диктора; фразы лауреатов - конкретная деталь, без штампов п.4.4(9); по идее 1 Заготовка, с вариантами под 2 и 3",
+     in: [02_concept/ideas.md, 01_research/strategy.md, data/laureates.csv], out: [02_concept/script.md, 02_concept/vo.md], status: todo, from: creative-director}
+  - {id: t004, role: technical-director, task: "профиль экрана: пока screen=custom — запросить у клиента данные экранов (письмо 01) и заполнить screens/",
+     in: [client/letters/01_questions.md], out: [screens/<профиль>.yaml], status: todo, from: producer}
 gates:            # approved: true ставит ЧЕЛОВЕК после просмотра артефакта
   00_brief:       {approved: false, by: "", date: ""}
   01_research:    {approved: false, by: "", date: ""}
