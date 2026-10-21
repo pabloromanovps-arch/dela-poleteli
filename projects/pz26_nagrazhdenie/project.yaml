@@ -1,0 +1,27 @@
+id: "pz26_nagrazhdenie"
+title: "Путеводная звезда 2026 — фильм и ролики для гала-шоу (тест)"
+client: "Комитет по туризму г. Москвы"
+screen: "custom"
+brand: "pz_premiya"          # brands/<client>, пусто — без бренда
+created: "2026-10-21"
+stage: 00_brief
+tasks:             # передача работы между ролями — см. agency-orchestration
+  - {id: t001, role: producer, task: "бриф по intake.md (после ответов клиента на client/letters/01_questions.md; до ответов — черновик с пометками «уточняется»)",
+     in: [00_brief/intake.md, 00_brief/TEST_RUN.md, client/letters/01_questions.md],
+     out: [00_brief/brief.md], status: todo, from: account-manager}
+  - {id: t002, role: strategist, task: "стратегия по исходникам клиента (ТЗ, концепция фильма, концепция премии)",
+     in: [00_brief/source/tz_semka.txt, 00_brief/source/koncepciya_filma.txt, 00_brief/source/koncepciya_premii.txt, 00_brief/TEST_RUN.md],
+     out: [01_research/strategy.md], status: done, from: account-manager}
+  - {id: t003, role: creative-director, task: "идеи (2-3 направления) по стратегии: инсайт про жест и эстафету ключа, обход клише из п.4.4, решение вызова «35 лауреатов без 35 интервью»; экраны, хронометраж, связь с 4 эпохами — допущения до ответов клиента",
+     in: [01_research/strategy.md, 00_brief/source/koncepciya_filma.txt, 00_brief/source/koncepciya_premii.txt, 00_brief/TEST_RUN.md],
+     out: [02_concept/ideas.md], status: todo, from: strategist}
+gates:            # approved: true ставит ЧЕЛОВЕК после просмотра артефакта
+  00_brief:       {approved: false, by: "", date: ""}
+  01_research:    {approved: false, by: "", date: ""}
+  02_concept:     {approved: false, by: "", date: "", chosen: ""}
+  03_style:       {approved: false, by: "", date: ""}
+  04_board:       {approved: false, by: "", date: ""}
+  05_plan:        {approved: false, by: "", date: ""}
+  06_build:       {approved: false, by: "", date: ""}
+  07_review:      {approved: false, by: "", date: ""}
+  08_delivery:    {approved: false, by: "", date: ""}
