@@ -1,9 +1,9 @@
 # Дела полетели
 
-Студийный пайплайн для Claude Code: моушн-графика, 3D/CG и контент для больших
-LED-экранов. Claude работает как студия из ролей (продюсер, арт-директор,
-дизайнер, моушн-дизайнер, CG-генералист, технический директор) по стадиям с
-воротами, а программы (After Effects, Blender, Cinema 4D, Unreal, Premiere)
+ИИ-агентство полного цикла на Claude Code: моушн-графика, 3D/CG и контент для
+больших LED-экранов. 18 ролей классического продакшена — от аккаунт-менеджера и
+стратега до монтажёра, колориста, звукорежиссёра и QC — работают по стадиям с
+воротами (см. `CLAUDE.md` и скилл `agency-orchestration`), а программы (After Effects, Blender, Cinema 4D, Unreal, Premiere)
 управляются скриптами. Результат — **редактируемые проекты**, а не «мёртвые»
 рендеры.
 
@@ -58,8 +58,8 @@ Claude проведёт проект по стадиям (см. `CLAUDE.md`):
 | Где | Что |
 |---|---|
 | `CLAUDE.md` | правила студии: стадии, ворота, редактируемость |
-| `.claude/agents/` | 6 ролей: producer, art-director, designer, motion-designer, cg-generalist, technical-director |
-| `.claude/skills/` | 19 скиллов: процесс, арт-дирекшн, дизайн, движение, музыка, раскадровка, QC, пайплайны AE/Blender/C4D/UE/Premiere, шаблоны из таблиц, LED-сдача, цвет, композ, **брендбуки, презентации** |
+| `.claude/agents/` | 18 ролей: клиент и бизнес (account-manager, producer, rights-manager) · креатив (strategist, creative-director, art-director, copywriter) · препродакшен (concept-artist, designer, storyboard-artist) · продакшен (motion-designer, cg-generalist, compositor) · пост (editor, colorist, sound-designer) · технологии и качество (technical-director, qc-supervisor) |
+| `.claude/skills/` | 24 скилла: оркестрация агентства, сценарий, смета, звук, монтаж и цвет, процесс, арт-дирекшн, дизайн, движение, музыка, раскадровка, QC, пайплайны AE/Blender/C4D/UE/Premiere, шаблоны из таблиц, LED-сдача, цвет, композ, **брендбуки, презентации** |
 | `brands/` | бренды клиентов (`brand.yaml` из брендбука) и тема студии |
 | `tools/deck/build_deck.py` | презентация из `deck.yaml` → редактируемый PPTX + PDF + превью |
 | `tools/brand_sheet.py`, `tools/new_brand.py` | контрольный лист бренда, новый бренд |
