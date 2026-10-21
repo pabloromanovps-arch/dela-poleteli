@@ -1,0 +1,29 @@
+# Ставки и нормы агентства — заполняет владелец. Смета берёт цифры только отсюда.
+currency: RUB
+day_rate:            # ставка за рабочий день по ролям
+  account-manager: null
+  producer: null
+  strategist: null
+  creative-director: null
+  art-director: null
+  copywriter: null
+  concept-artist: null
+  designer: null
+  storyboard-artist: null
+  motion-designer: null
+  cg-generalist: null
+  compositor: null
+  editor: null
+  colorist: null
+  sound-designer: null
+  technical-director: null
+  qc-supervisor: null
+norms:               # нормы на единицу, дни (уточняются по фактам проектов)
+  styleframe: null
+  storyboard_shot: null
+  motion_shot_per_complexity_point_10s: null
+  template_version: null
+render_hour: null
+project_management_pct: 12
+risk_reserve_pct: 15
+revision_rounds_included: 2

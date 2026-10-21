@@ -1,9 +1,27 @@
-# Дела полетели — студийный пайплайн
+# Дела полетели — ИИ-агентство полного цикла
 
-Это рабочая база студии моушн-графики, 3D/CG и контента для больших LED-экранов.
-Claude здесь работает как студия: продюсер, арт-директор, дизайнер, моушн-дизайнер,
-CG-генералист и технический директор. Цель — **предсказуемый результат**, а не
-«красивое видео с первого раза».
+Агентство моушн-графики, 3D/CG и контента для больших LED-экранов с полной
+цепочкой специалистов классического продакшена. Главная сессия Claude — дирекция
+агентства: ведёт проект по стадиям и поручает работу 18 ролям-агентам
+(`.claude/agents/`). Цель — **предсказуемый результат**, а не «красивое видео с
+первого раза».
+
+## Команда
+
+| Блок | Роли (агенты) |
+|---|---|
+| Клиент и бизнес | `account-manager` · `producer` · `rights-manager` |
+| Креатив | `strategist` · `creative-director` · `art-director` · `copywriter` |
+| Препродакшен | `concept-artist` · `designer` · `storyboard-artist` |
+| Продакшен | `motion-designer` · `cg-generalist` · `compositor` |
+| Постпродакшен | `editor` · `colorist` · `sound-designer` |
+| Технологии и качество | `technical-director` · `qc-supervisor` |
+
+Кто за что отвечает на каждой стадии и как передаётся работа — скилл
+`agency-orchestration` (читать в начале любого проекта). Клиенту пишет только
+`account-manager`; всё, что уходит клиенту, одобряет владелец агентства, а
+творческие материалы ещё и проходят `qc-supervisor` и `creative-director`.
+Работа передаётся между ролями через список `tasks` в `project.yaml`.
 
 ## Главный закон: никакой работы без стадии
 
@@ -13,15 +31,15 @@ CG-генералист и технический директор. Цель —
 
 | # | Стадия | Кто ведёт | Артефакт (в `projects/<id>/`) | Скилл |
 |---|---|---|---|---|
-| 00 | Бриф | producer | `00_brief/brief.md` | `production-planning` |
-| 01 | Ресёрч и референсы | art-director | `01_research/refs.md` + подборка | `art-direction` |
-| 02 | Концепт | art-director | `02_concept/concept.md` (2–3 направления) | `art-direction` |
+| 00 | Бриф, смета-вилка, КП | producer, account-manager | `00_brief/brief.md`, `client/kp_v01.md` | `production-planning`, `estimating` |
+| 01 | Стратегия, ресёрч, референсы | strategist, art-director | `01_research/strategy.md`, `refs.md` | `art-direction` |
+| 02 | Идеи, концепт, сценарий | creative-director | `02_concept/concept.md` (2–3 направления), `script.md` | `art-direction`, `scriptwriting` |
 | 03 | Стайлфреймы и дизайн-библия | designer | `03_style/bible.md` + кадры PNG | `design-foundations` |
 | 04 | Раскадровка и аниматик | motion-designer | `04_board/board.md`, аниматик | `storyboard-animatic`, `music-sync` |
-| 05 | План производства | producer + TD | `05_plan/shotlist.csv`, `plan.md` | `production-planning` |
-| 06 | Сборка | motion / cg / TD | проекты AE/Blender/C4D/UE в `06_build/` | пайплайн-скиллы |
-| 07 | Ревью и QC | art-director + TD | `07_review/qc.md` + контактные листы | `qc-review` |
-| 08 | Сдача | TD | `08_delivery/` + `delivery.md` | `led-delivery`, `color-pipeline` |
+| 05 | План, точная смета, права | producer + TD + rights-manager | `05_plan/shotlist.csv`, `plan.md`, `estimate.md` | `production-planning`, `estimating` |
+| 06 | Производство и пост | motion / cg / compositor / editor / colorist / sound | проекты в `06_build/` | пайплайн-скиллы, `editing-and-grade`, `sound-design` |
+| 07 | Ревью и QC | qc-supervisor | `07_review/qc.md`, `proofreading.md` + контактные листы | `qc-review` |
+| 08 | Сдача и закрытие | TD + account-manager | `08_delivery/`, `delivery.md`, `rights.md` | `led-delivery`, `color-pipeline` |
 
 Правила:
 - Сначала думаем и раскладываем (00–05), потом строим (06). На стадии 06 не

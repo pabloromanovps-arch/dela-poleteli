@@ -5,6 +5,7 @@ screen: "{{screen}}"
 brand: ""          # brands/<client>, пусто — без бренда
 created: "{{date}}"
 stage: 00_brief
+tasks: []          # передача работы между ролями — см. agency-orchestration
 gates:            # approved: true ставит ЧЕЛОВЕК после просмотра артефакта
   00_brief:       {approved: false, by: "", date: ""}
   01_research:    {approved: false, by: "", date: ""}
