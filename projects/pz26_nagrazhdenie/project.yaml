@@ -26,6 +26,12 @@ tasks:             # передача работы между ролями — �
      out: [02_concept/concept_deck.yaml, 02_concept/concept_deck.pptx, 02_concept/concept_deck.pdf], status: doing, from: art-director}
   - {id: t008, role: qc-supervisor, task: "независимая проверка презентации концепта и согласованности документов 00–02",
      in: [02_concept/concept_deck.pdf], out: [07_review/qc.md], status: todo, from: designer}
+  - {id: t009, role: creative-director, task: "идеи v2 со смыслом по замечанию владельца (ключ без смысла): 5 идей, отобраны 3, рекомендована «Линия среза»",
+     in: [02_concept/ideas.md], out: [02_concept/ideas_v2.md], status: done, from: owner-feedback}
+  - {id: t010, role: art-director, task: "серые эскизы композиций 5:1 для 3 отобранных идей (без цвета и анимации)",
+     in: [02_concept/ideas_v2.md], out: [03_style/thumbs/], status: done, from: creative-director}
+  - {id: t011, role: owner, task: "выбрать направление / дать правки по эскизам (ворота 02)", in: [03_style/thumbs/_contact_sheet.png, 02_concept/ideas_v2.md],
+     out: [project.yaml gates.02_concept], status: todo, from: art-director}
 gates:            # approved: true ставит ЧЕЛОВЕК после просмотра артефакта
   00_brief:       {approved: false, by: "", date: ""}
   01_research:    {approved: false, by: "", date: ""}
