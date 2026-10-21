@@ -1,0 +1,50 @@
+# Пример: презентация концепта (стадия 02). Сборка:
+#   python tools/deck/build_deck.py examples/deck/concept_deck.yaml --out examples/deck/out/concept.pptx --pdf --preview
+title: "Открытие форума · концепт"
+footer: "Дела полетели · Открытие форума · Концепт v1"
+brand: studio
+slides:
+  - type: cover
+    kicker: "Концепт · v1"
+    title: "Свет, который\nсобирает зал"
+    subtitle: "Открытие форума · главный экран 7680×1536"
+  - type: statement
+    kicker: "Задача"
+    title: "За 90 секунд превратить шумный зал в единое внимание"
+    note: "Экран — архитектура зала, а не телевизор: 40 м в ширину, зритель от 6 до 40 м"
+  - type: section
+    number: "A"
+    title: "Свет рождает логотип"
+  - type: image
+    image: img/sf_light_logo.png
+    caption: "Ключевой кадр A · хром и мягкий контровой свет"
+  - type: image_grid
+    kicker: "Референсы — что берём"
+    images:
+      - {image: refs/ref1.jpg, caption: "Ритм: тишина 8 тактов → взрыв"}
+      - {image: refs/ref2.jpg, caption: "Свет: контровой, без заполнения"}
+      - {image: refs/ref3.jpg, caption: "Типографика: узкий гротеск, трекинг −2%"}
+      - {image: refs/ref4.jpg, caption: "Переход: свет как шторка"}
+  - type: palette
+    title: "Ночь и одна вспышка"
+  - type: typography
+  - type: compare
+    title: "Три направления"
+    options:
+      - {name: "A · Свет", recommended: true, points: ["Сильный крючок: логотип из света", "Работает на всю ширину экрана", "Риск: долгий рендер → часть в UE"]}
+      - {name: "B · Геометрия", points: ["Процедурные формы, MoGraph", "Быстрое производство", "Менее эмоционально"]}
+      - {name: "C · Люди", points: ["Портреты участников из таблицы", "Персонализация", "Нужны фото до дедлайна"]}
+  - type: quote
+    text: "Зал должен замолчать раньше, чем появится первый текст"
+    author: "идея направления A"
+  - type: timeline
+    title: "Путь до показа"
+    steps:
+      - {when: "Неделя 1", what: "Стайлфреймы и дизайн-библия"}
+      - {when: "Неделя 2", what: "Раскадровка и аниматик в бит"}
+      - {when: "Неделя 3–4", what: "Сборка, рендер, ревью"}
+      - {when: "Неделя 5", what: "Нарезка, прогон на площадке"}
+  - type: end
+    title: "Выбираем направление"
+    body: "Рекомендуем A. После выбора — стайлфреймы через 5 рабочих дней."
+    contact: "Дела полетели"

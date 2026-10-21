@@ -1,0 +1,29 @@
+# Бренд клиента — машинная версия брендбука (скилл brand-book).
+name: ""
+status: draft            # draft — заполнен частично; verified — сверено с брендбуком/клиентом
+source: ""               # файл брендбука, версия, дата
+colors:                  # роль → цвет. screen — согласованная экранная версия (LED), если отличается
+  bg:        {hex: "#000000", note: ""}
+  text:      {hex: "#FFFFFF"}
+  primary:   {hex: "#000000"}
+  secondary: {hex: "#000000"}
+  accent:    {hex: "#000000", screen: null}
+proportions: {bg: 60, primary: 30, accent: 10}
+fonts:
+  heading: {family: "", weight: "Bold", file: "", license: "", cyrillic: true}
+  body:    {family: "", weight: "Regular", file: "", license: "", cyrillic: true}
+logos:                   # файлы в brands/<client>/logos/ — только вектор (svg/ai/eps/pdf) + png для превью
+  primary:  {file: "", on: dark}
+  inverse:  {file: "", on: light}
+  mark:     {file: ""}
+clearspace: ""           # охранное поле, напр. "высота буквы Д"
+min_size: ""             # минимальный размер (px / мм), для экранов — пересчитать по дистанции
+donts: []
+imagery: ""
+motion:
+  source: derived        # brandbook — из брендбука; derived — выведено нами, нужно согласование
+  character: ""
+  preset: confident      # пресет из motion-language
+  accent_preset: punchy
+  logo_animation: ""
+open_questions: []

@@ -2,6 +2,7 @@ id: "{{id}}"
 title: "{{title}}"
 client: "{{client}}"
 screen: "{{screen}}"
+brand: ""          # brands/<client>, пусто — без бренда
 created: "{{date}}"
 stage: 00_brief
 gates:            # approved: true ставит ЧЕЛОВЕК после просмотра артефакта

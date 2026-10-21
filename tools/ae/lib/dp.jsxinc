@@ -143,6 +143,19 @@ DP.screen = function () {
     return s;
 };
 
+// Бренд, переданный через --args brand=<client> (скилл brand-book).
+DP.brand = function () {
+    var b = DP.args.brand_profile;
+    if (!b) { throw new Error("Нет бренда: запускайте с --args brand=<client>"); }
+    return b;
+};
+
+// Цвет бренда по роли → [r,g,b] 0..1 (screen=true — экранная версия, если согласована).
+DP.brandColor = function (role, screen) {
+    var c = DP.brand().colors[role];
+    return DP.hex(screen && c.screen ? c.screen : c.hex);
+};
+
 // Создаёт или пересоздаёт композицию (идемпотентно).
 DP.ensureComp = function (name, w, h, dur, fps, folder) {
     var old = DP.findComp(name);

@@ -47,7 +47,7 @@ CG-генералист и технический директор. Цель —
 Мост — `tools/run.py` (и MCP-сервер `mcp/studio_bridge`, который его оборачивает).
 Он сам находит программу на Windows/macOS и запускает:
 - After Effects: `.jsx` скрипты (ExtendScript), рендер через `aerender`.
-- Blender: `blender -b <file> -P <script> -- <args>` (через `run.py blender <script> --blend <file>`) (через `run.py blender <script> --blend <file>`).
+- Blender: `blender -b <file> -P <script> -- <args>` (через `run.py blender <script> --blend <file>`).
 - Cinema 4D: `c4dpy`, рендер `Commandline`.
 - Unreal: `UnrealEditor-Cmd -ExecutePythonScript`, Movie Render Queue.
 - Premiere: UXP-скрипты (через панель) — см. `premiere-pipeline`.
@@ -58,6 +58,15 @@ CG-генералист и технический директор. Цель —
 Профили экранов — `screens/*.yaml`. Любой проект ссылается на профиль экрана, и
 **все** разрешения, fps, безопасные зоны и форматы сдачи берутся оттуда, а не
 придумываются. Неизвестный экран → сначала заполнить профиль (скилл `led-delivery`).
+
+## Бренды и презентации
+
+- Бренд клиента — `brands/<client>/brand.yaml` (скилл `brand-book`); проект
+  ссылается на него строкой `brand:` в `project.yaml`. Цвета, шрифты, логотипы и
+  запреты берутся только оттуда. Своя тема студии — `brands/studio/`.
+- Презентации (концепт, стайлфреймы, кейсы, брендбуки) собираются из `deck.yaml`
+  в редактируемый PPTX + PDF (скилл `presentation-design`). Концепт на стадии 02
+  и стайлфреймы на 03 показываются клиенту именно так.
 
 ## Референсы
 

@@ -19,8 +19,9 @@ LED-экранов. Claude работает как студия из ролей 
    git clone <url> dela-poleteli && cd dela-poleteli
    python -m pip install -r tools/requirements.txt
    python tools/run.py doctor
+   python tools/selftest.py
    ```
-   `doctor` покажет, какие программы найдены. Не нашлось — скопируйте
+   `doctor` покажет, какие программы найдены, `selftest` проверит инструменты. Не нашлось — скопируйте
    `studio.config.example.json` в `studio.config.json` и впишите пути.
 4. After Effects: Settings → Scripting & Expressions →
    ✔ «Allow Scripts to Write Files and Access Network».
@@ -40,6 +41,13 @@ Claude проведёт проект по стадиям (см. `CLAUDE.md`):
 05 план → 06 сборка → 07 ревью → 08 сдача`. На каждой стадии — артефакт в
 `projects/<id>/` и ваше одобрение. Так результат предсказуем.
 
+## Презентации и брендбуки
+- «Сделай презентацию концепта» → `deck.yaml` → PPTX (правится в PowerPoint/Keynote) + PDF.
+  Пример: `python tools/deck/build_deck.py examples/deck/concept_deck.yaml --out out/concept.pptx --pdf --preview`
+- «Вот брендбук клиента» → `brands/<client>/brand.yaml`: цвета, шрифты, логотипы,
+  запреты — дальше весь проект (AE, Blender, презентации) работает в этом бренде.
+- «Разработай брендбук / моушн-айдентику» → по стадиям, на выходе брендбук-презентация + `brand.yaml`.
+
 ## Пилот за 1 минуту (After Effects)
 Двойной клик `tools/launchers/players_demo.bat` (Windows) или
 `players_demo.command` (Mac): соберётся шаблон заставки игрока под UHD и версии
@@ -51,7 +59,11 @@ Claude проведёт проект по стадиям (см. `CLAUDE.md`):
 |---|---|
 | `CLAUDE.md` | правила студии: стадии, ворота, редактируемость |
 | `.claude/agents/` | 6 ролей: producer, art-director, designer, motion-designer, cg-generalist, technical-director |
-| `.claude/skills/` | 17 скиллов: процесс, арт-дирекшн, дизайн, движение, музыка, раскадровка, QC, пайплайны AE/Blender/C4D/UE/Premiere, шаблоны из таблиц, LED-сдача, цвет, композ |
+| `.claude/skills/` | 19 скиллов: процесс, арт-дирекшн, дизайн, движение, музыка, раскадровка, QC, пайплайны AE/Blender/C4D/UE/Premiere, шаблоны из таблиц, LED-сдача, цвет, композ, **брендбуки, презентации** |
+| `brands/` | бренды клиентов (`brand.yaml` из брендбука) и тема студии |
+| `tools/deck/build_deck.py` | презентация из `deck.yaml` → редактируемый PPTX + PDF + превью |
+| `tools/brand_sheet.py`, `tools/new_brand.py` | контрольный лист бренда, новый бренд |
+| `tools/selftest.py` | самопроверка всех инструментов без внешних программ |
 | `tools/run.py` | мост к программам (Windows/macOS), логи в `tools/.run/logs` |
 | `mcp/studio_bridge` | MCP-сервер: те же функции как инструменты Claude |
 | `tools/ae/` | ExtendScript: библиотека, кривые, генерация из таблиц, бит-сетка, аниматик, демо-шаблон |
@@ -73,6 +85,8 @@ Claude проведёт проект по стадиям (см. `CLAUDE.md`):
 | Сдача: нарезка по выходам, HAP Q / ProRes, ffprobe-проверка | ✅ проверено |
 | Контактные листы, импорт таблиц (UTF-8/cp1251, Excel, Google) | ✅ проверено (кроме загрузки Google — нужна сеть) |
 | MCP-сервер (список инструментов, doctor) | ✅ проверено |
+| Презентации: PPTX + PDF + превью, все 12 типов слайдов | ✅ проверено (пример `examples/deck`) |
+| Бренды: шаблон, контрольный лист, передача в AE-скрипты | ✅ проверено (кроме самого AE) |
 | CSV/JSON-парсер AE-библиотеки | ✅ проверено (Node) |
 | After Effects скрипты (.jsx) | ⚠️ синтаксис проверен; **в самом AE ещё не запускались** — первый прогон на вашей машине |
 | Cinema 4D / Unreal команды | ⚠️ собраны по документации, не запускались |

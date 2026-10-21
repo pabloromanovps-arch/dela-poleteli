@@ -138,6 +138,12 @@ def write_ae_args(args_dict):
     screen = args_dict.get("screen")
     if screen:
         args_dict["screen_profile"] = load_screen(screen)
+    brand = args_dict.get("brand")
+    if brand:
+        import yaml
+        with open(os.path.join(ROOT, "brands", brand, "brand.yaml"), encoding="utf-8") as f:
+            args_dict["brand_profile"] = yaml.safe_load(f)
+        args_dict["brand_dir"] = os.path.join(ROOT, "brands", brand).replace("\\", "/")
     with open(os.path.join(RUN_DIR, "args.json"), "w", encoding="utf-8") as f:
         json.dump(args_dict, f, ensure_ascii=False, indent=2)
 

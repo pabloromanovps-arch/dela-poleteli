@@ -1,0 +1,19 @@
+# Тема студии «Дела полетели» для собственных презентаций.
+# ЧЕРНОВИК: нейтральная тёмная тема до разработки айдентики студии (brand-book, раздел C).
+name: "Дела полетели"
+status: draft
+source: "временная тема, не айдентика"
+colors:
+  bg:        {hex: "#0C0C0E"}
+  text:      {hex: "#F2F1EE"}
+  primary:   {hex: "#F2F1EE"}
+  secondary: {hex: "#7D7D86"}
+  accent:    {hex: "#FF4B1F"}
+proportions: {bg: 70, primary: 25, accent: 5}
+fonts:
+  heading: {family: "Inter Display", weight: "Bold", file: "", license: "SIL OFL", cyrillic: true}
+  body:    {family: "Inter", weight: "Regular", file: "", license: "SIL OFL", cyrillic: true}
+logos: {}
+donts: []
+motion: {source: derived, character: "уверенно, точно", preset: confident, accent_preset: precise}
+open_questions: ["Разработать айдентику студии"]
