@@ -1,0 +1,10 @@
+# Индекс референсов. Одна запись — один референс.
+# - id: ref_0001
+#   file: motion/buck_example_frame.jpg     # или url
+#   author: "Buck"
+#   project: ""
+#   tags: [typography, kinetic, bold, sport]
+#   strong: "чем силён: каскад букв 2 кадра, жёсткий ease-out, 2 цвета"
+#   use_for: [заставки игроков, титры]
+#   avoid: "перенасыщенный фон"
+refs: []

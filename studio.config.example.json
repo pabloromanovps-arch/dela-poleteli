@@ -1,0 +1,13 @@
+{
+  "_comment": "Скопируйте в studio.config.json и укажите пути, если `python tools/run.py doctor` не нашёл программы сам.",
+  "apps": {
+    "afterfx": "C:/Program Files/Adobe/Adobe After Effects 2025/Support Files/AfterFX.exe",
+    "aerender": "C:/Program Files/Adobe/Adobe After Effects 2025/Support Files/aerender.exe",
+    "blender": "C:/Program Files/Blender Foundation/Blender 4.5/blender.exe",
+    "c4dpy": "",
+    "c4d_commandline": "",
+    "unreal_cmd": ""
+  },
+  "ocio": "",
+  "unreal_remote_port": 30010
+}

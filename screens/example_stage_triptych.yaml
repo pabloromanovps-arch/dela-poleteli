@@ -1,0 +1,18 @@
+# ПРИМЕР структуры составного сценического экрана (центр + два боковых). Цифры условные.
+id: example_stage_triptych
+title: "Пример: сцена — центральный экран + 2 боковых"
+status: example
+canvas: {width: 7680, height: 1536}   # общий холст: боковые 1536×1536, центр 4608×1536
+fps: 50
+pixel_pitch_mm: 2.6
+viewing_distance_m: {near: 6, far: 40}
+safe_area: {x: 1536, y: 120, w: 4608, h: 1296}   # тексты — только на центральном
+dead_zones:
+  - {x: 1530, y: 0, w: 12, h: 1536, note: "стык левый/центр"}
+  - {x: 6138, y: 0, w: 12, h: 1536, note: "стык центр/правый"}
+outputs:
+  - {name: L, x: 0, y: 0, w: 1536, h: 1536}
+  - {name: C, x: 1536, y: 0, w: 4608, h: 1536}
+  - {name: R, x: 6144, y: 0, w: 1536, h: 1536}
+media_server: Resolume Arena
+delivery: {codec: hap_q, container: mov, alpha: false, color: rec709, bit_depth: 8, naming: "<project>_<output>_v<NN>"}

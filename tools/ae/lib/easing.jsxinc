@@ -1,0 +1,52 @@
+// Кривые движения студии: cubic-bezier → KeyframeEase AE. См. скилл motion-language.
+
+var DPE = {
+    PRESETS: {
+        precise:   [0.7, 0, 0.2, 1],
+        confident: [0.3, 0, 0, 1],
+        soft:      [0.45, 0, 0.25, 1],
+        punchy:    [0.9, 0, 0.1, 1],
+        cinematic: [0.4, 0, 0.1, 1],
+        enter:     [0, 0, 0.2, 1],    // ease-out: вход
+        exit:      [0.6, 0, 1, 1]     // ease-in: уход
+    }
+};
+
+DPE._dims = function (v) { return (v instanceof Array) ? v : [v]; };
+
+// Применяет cubic-bezier (x1,y1,x2,y2) к сегменту между ключами k и k+1.
+DPE.segment = function (prop, k, b) {
+    var x1 = Math.max(b[0], 0.001), y1 = b[1], x2 = Math.min(b[2], 0.999), y2 = b[3];
+    var t0 = prop.keyTime(k), t1 = prop.keyTime(k + 1), dt = t1 - t0;
+    var v0 = DPE._dims(prop.keyValue(k)), v1 = DPE._dims(prop.keyValue(k + 1));
+    var outCount = prop.keyOutTemporalEase(k).length, i, delta, d, outE = [], inE = [];
+    for (i = 0; i < outCount; i++) {
+        if (outCount === 1 && v0.length > 1) {          // пространственное свойство: длина пути
+            d = 0;
+            for (var j = 0; j < v0.length; j++) { d += Math.pow(v1[j] - v0[j], 2); }
+            delta = Math.sqrt(d);
+        } else {
+            delta = Math.abs(v1[i] - v0[i]);
+        }
+        var avg = delta / dt;
+        outE.push(new KeyframeEase((y1 / x1) * avg, Math.max(0.1, Math.min(100, x1 * 100))));
+        inE.push(new KeyframeEase(((1 - y2) / (1 - x2)) * avg, Math.max(0.1, Math.min(100, (1 - x2) * 100))));
+    }
+    prop.setInterpolationTypeAtKey(k, prop.keyInInterpolationType(k), KeyframeInterpolationType.BEZIER);
+    prop.setInterpolationTypeAtKey(k + 1, KeyframeInterpolationType.BEZIER, prop.keyOutInterpolationType(k + 1));
+    prop.setTemporalEaseAtKey(k, prop.keyInTemporalEase(k), outE);
+    prop.setTemporalEaseAtKey(k + 1, inE, prop.keyOutTemporalEase(k + 1));
+};
+
+// Пресет (имя или массив) на все сегменты свойства.
+DPE.apply = function (prop, preset) {
+    var b = (typeof preset === "string") ? DPE.PRESETS[preset] : preset;
+    if (!b) { throw new Error("Нет пресета кривой: " + preset); }
+    for (var k = 1; k < prop.numKeys; k++) { DPE.segment(prop, k, b); }
+};
+
+// Удобная анимация: ключи [время, значение] + пресет.
+DPE.animate = function (prop, keys, preset) {
+    for (var i = 0; i < keys.length; i++) { prop.setValueAtTime(keys[i][0], keys[i][1]); }
+    DPE.apply(prop, preset);
+};

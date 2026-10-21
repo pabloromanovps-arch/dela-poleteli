@@ -1,0 +1,18 @@
+tools/.run/
+studio.config.json
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+# тяжёлые медиа — в облако/на диск, не в git
+*.mov
+*.mp4
+*.mxf
+*.exr
+*.wav
+*.aif
+*.aep.bak
+*.blend1
+*Auto-Save*
+projects/*/06_build/**/render/
+projects/*/08_delivery/**/*.mov

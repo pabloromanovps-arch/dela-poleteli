@@ -1,0 +1,9 @@
+id: fhd_16x9
+title: Full HD 1920×1080, 16:9
+status: standard
+canvas: {width: 1920, height: 1080}
+fps: 50
+safe_area: {x: 96, y: 54, w: 1728, h: 972}
+dead_zones: []
+outputs: []
+delivery: {codec: prores_422hq, container: mov, alpha: false, color: rec709, bit_depth: 10, naming: "<project>_<shot>_v<NN>"}

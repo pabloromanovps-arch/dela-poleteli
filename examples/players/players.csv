@@ -1,0 +1,5 @@
+id,name,number,position,team_color,photo,ctrl_speed,skip
+p01_ivanov,ИВАНОВ,7,НАПАДАЮЩИЙ,#E3122B,,1,
+p02_konstantinopolsky,КОНСТАНТИНОПОЛЬСКИЙ-ЩЕДРИН,11,ЗАЩИТНИК,#E3122B,,1,
+p03_li,ЛИ,99,ВРАТАРЬ,#1C5BD9,,1.2,
+p04_skip,ТЕСТ,0,ПРОПУСК,#FFFFFF,,1,1

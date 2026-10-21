@@ -1,0 +1,162 @@
+{
+  "shot": "demo_sh010",
+  "screen": "uhd_16x9",
+  "frames": [
+    1,
+    150
+  ],
+  "resolution_percentage": 25,
+  "engine": "CYCLES",
+  "samples": 64,
+  "look": "agx_high_contrast",
+  "camera": {
+    "lens": 55,
+    "location": [
+      0,
+      -19,
+      1.0
+    ],
+    "target": [
+      0,
+      0,
+      0.9
+    ],
+    "animate": [
+      {
+        "path": "location",
+        "keys": [
+          [
+            1,
+            [
+              -2.0,
+              -22,
+              1.6
+            ]
+          ],
+          [
+            150,
+            [
+              0,
+              -19,
+              1.0
+            ]
+          ]
+        ],
+        "ease": "cinematic"
+      }
+    ]
+  },
+  "objects": [
+    {
+      "type": "text",
+      "name": "@title",
+      "body": "ДЕЛА ПОЛЕТЕЛИ",
+      "extrude": 0.12,
+      "bevel": 0.01,
+      "material": "mat_chrome",
+      "location": [
+        0,
+        0,
+        0.9
+      ],
+      "animate": [
+        {
+          "path": "location",
+          "index": 2,
+          "keys": [
+            [
+              1,
+              -1.2
+            ],
+            [
+              45,
+              0.9
+            ]
+          ],
+          "ease": "confident"
+        }
+      ]
+    },
+    {
+      "type": "plane",
+      "name": "geo_floor",
+      "collection": "GEO_env",
+      "scale": 40,
+      "material": "mat_floor"
+    }
+  ],
+  "lights": [
+    {
+      "type": "AREA",
+      "name": "lgt_key",
+      "power": 1400,
+      "size": 3,
+      "location": [
+        4,
+        -5,
+        5
+      ],
+      "target": [
+        0,
+        0,
+        0.9
+      ]
+    },
+    {
+      "type": "AREA",
+      "name": "lgt_rim",
+      "power": 1800,
+      "size": 14,
+      "color": [
+        0.55,
+        0.7,
+        1.0
+      ],
+      "location": [
+        0,
+        10,
+        6
+      ],
+      "target": [
+        0,
+        0,
+        0.9
+      ],
+      "visible_glossy": true
+    },
+    {
+      "type": "AREA",
+      "name": "lgt_top",
+      "power": 600,
+      "size": 12,
+      "location": [
+        0,
+        0,
+        7
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "visible_glossy": false
+    }
+  ],
+  "materials": {
+    "mat_floor": {
+      "Base Color": [
+        0.004,
+        0.004,
+        0.005,
+        1
+      ],
+      "Roughness": 0.45,
+      "Metallic": 0.0
+    }
+  },
+  "world_color": [
+    0.012,
+    0.013,
+    0.018
+  ]
+}

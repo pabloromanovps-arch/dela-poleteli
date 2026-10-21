@@ -1,0 +1,227 @@
+// Библиотека студии «Дела полетели» для After Effects (ExtendScript, ES3).
+// Подключение в скрипте из tools/ae/:
+//   #include "lib/dp.jsxinc"
+//   DP.init(File($.fileName));
+
+var DP = DP || {};
+
+DP.FOLDERS = ["00_MASTER", "01_SHOTS", "02_PRECOMPS", "03_TEMPLATES", "04_ASSETS", "05_RENDER", "99_REF"];
+
+// Инициализация: scriptFile — File основного скрипта (лежит в tools/ae/).
+DP.init = function (scriptFile) {
+    DP.toolsDir = scriptFile.parent.parent;           // tools/
+    DP.runDir = new Folder(DP.toolsDir.fsName + "/.run");
+    DP.logDir = new Folder(DP.runDir.fsName + "/logs");
+    if (!DP.logDir.exists) { DP.logDir.create(); }
+    DP.logFile = new File(DP.logDir.fsName + "/ae.log");
+    var argsFile = new File(DP.runDir.fsName + "/args.json");
+    DP.args = argsFile.exists ? DP.json.parse(DP.readText(argsFile)) : {};
+    DP.root = DP.args.studio_root ? new Folder(DP.args.studio_root) : DP.toolsDir.parent;
+    DP.log("=== " + scriptFile.name + " ===");
+};
+
+// ---------- файлы ----------
+
+DP.readText = function (file) {
+    file.encoding = "UTF-8";
+    if (!file.open("r")) { throw new Error("Не открыть файл: " + file.fsName); }
+    var text = file.read();
+    file.close();
+    if (text.charCodeAt(0) === 0xFEFF) { text = text.substring(1); }   // BOM
+    return text;
+};
+
+DP.writeText = function (file, text) {
+    file.encoding = "UTF-8";
+    file.open("w");
+    file.write(text);
+    file.close();
+};
+
+// Путь относительно корня студии (или абсолютный, если уже абсолютный).
+DP.path = function (p) {
+    if (!p) { return null; }
+    if (p.charAt(0) === "/" || p.charAt(0) === "~" || /^[A-Za-z]:[\\\/]/.test(p)) { return p; }
+    return DP.root.fsName + "/" + p;
+};
+
+DP.log = function (msg) {
+    var line = "[" + new Date().toTimeString().substr(0, 8) + "] " + msg;
+    $.writeln(line);
+    if (DP.logFile) {
+        DP.logFile.encoding = "UTF-8";
+        DP.logFile.open("a");
+        DP.logFile.writeln(line);
+        DP.logFile.close();
+    }
+};
+
+// ---------- JSON (в ExtendScript нет встроенного) ----------
+
+DP.json = {
+    // Только для доверенных файлов студии.
+    parse: function (text) { return eval("(" + text + ")"); },
+    stringify: function (v) {
+        if (v === null || v === undefined) { return "null"; }
+        var t = typeof v;
+        if (t === "number" || t === "boolean") { return String(v); }
+        if (t === "string") {
+            return '"' + v.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r") + '"';
+        }
+        var parts = [], i, k;
+        if (v instanceof Array) {
+            for (i = 0; i < v.length; i++) { parts.push(DP.json.stringify(v[i])); }
+            return "[" + parts.join(",") + "]";
+        }
+        for (k in v) { if (v.hasOwnProperty(k)) { parts.push(DP.json.stringify(k) + ":" + DP.json.stringify(v[k])); } }
+        return "{" + parts.join(",") + "}";
+    }
+};
+
+// ---------- CSV (UTF-8, запятая или точка с запятой, кавычки "") ----------
+
+DP.parseCSV = function (text) {
+    var firstLine = text.split(/\r?\n/)[0];
+    var sep = (firstLine.split(";").length > firstLine.split(",").length) ? ";" : ",";
+    var rows = [], row = [], field = "", inQuotes = false, i, c;
+    for (i = 0; i < text.length; i++) {
+        c = text.charAt(i);
+        if (inQuotes) {
+            if (c === '"') {
+                if (text.charAt(i + 1) === '"') { field += '"'; i++; } else { inQuotes = false; }
+            } else { field += c; }
+        } else if (c === '"') { inQuotes = true; }
+        else if (c === sep) { row.push(field); field = ""; }
+        else if (c === "\n" || c === "\r") {
+            if (c === "\r" && text.charAt(i + 1) === "\n") { i++; }
+            row.push(field); field = "";
+            rows.push(row); row = [];
+        } else { field += c; }
+    }
+    if (field !== "" || row.length) { row.push(field); rows.push(row); }
+
+    var header = rows[0], out = [], r, j, obj, empty;
+    for (r = 1; r < rows.length; r++) {
+        obj = {}; empty = true;
+        for (j = 0; j < header.length; j++) {
+            obj[header[j]] = rows[r][j] !== undefined ? rows[r][j] : "";
+            if (obj[header[j]] !== "") { empty = false; }
+        }
+        if (!empty) { out.push(obj); }
+    }
+    return out;
+};
+
+// ---------- проект ----------
+
+DP.findItem = function (name, type, parent) {
+    var items = app.project.items, i, it;
+    for (i = 1; i <= items.length; i++) {
+        it = items[i];
+        if (it.name === name && (!type || it instanceof type) && (!parent || it.parentFolder === parent)) { return it; }
+    }
+    return null;
+};
+
+DP.findComp = function (name) { return DP.findItem(name, CompItem); };
+
+DP.ensureFolder = function (name, parent) {
+    parent = parent || app.project.rootFolder;
+    return DP.findItem(name, FolderItem, parent) || app.project.items.addFolder(name);
+};
+
+DP.ensureFolders = function () {
+    var map = {}, i;
+    for (i = 0; i < DP.FOLDERS.length; i++) { map[DP.FOLDERS[i]] = DP.ensureFolder(DP.FOLDERS[i]); }
+    return map;
+};
+
+// Профиль экрана, переданный через --args screen=<profile>.
+DP.screen = function () {
+    var s = DP.args.screen_profile;
+    if (!s) { throw new Error("Нет профиля экрана: запускайте с --args screen=<профиль>"); }
+    return s;
+};
+
+// Создаёт или пересоздаёт композицию (идемпотентно).
+DP.ensureComp = function (name, w, h, dur, fps, folder) {
+    var old = DP.findComp(name);
+    if (old) { old.remove(); }
+    if (w > 30000 || h > 30000) { throw new Error("AE ограничен 30000 px по стороне: " + w + "x" + h + " — см. led-delivery"); }
+    var comp = app.project.items.addComp(name, Math.round(w), Math.round(h), 1, dur, fps);
+    if (folder) { comp.parentFolder = folder; }
+    return comp;
+};
+
+DP.compFromScreen = function (name, dur, folder) {
+    var s = DP.screen();
+    return DP.ensureComp(name, s.canvas.width, s.canvas.height, dur, s.fps, folder);
+};
+
+DP.importFile = function (path, folder) {
+    DP._imported = DP._imported || {};
+    if (DP._imported[path]) { return DP._imported[path]; }
+    var f = new File(DP.path(path));
+    if (!f.exists) { throw new Error("Нет файла: " + f.fsName); }
+    var item = app.project.importFile(new ImportOptions(f));
+    if (folder) { item.parentFolder = folder; }
+    DP._imported[path] = item;
+    return item;
+};
+
+// ---------- цвет и текст ----------
+
+DP.hex = function (hex) {
+    hex = hex.replace("#", "");
+    return [parseInt(hex.substr(0, 2), 16) / 255, parseInt(hex.substr(2, 2), 16) / 255, parseInt(hex.substr(4, 2), 16) / 255];
+};
+
+DP.setText = function (layer, text) {
+    var prop = layer.property("ADBE Text Properties").property("ADBE Text Document");
+    var doc = prop.value;
+    doc.text = text;
+    prop.setValue(doc);
+};
+
+// Ужимает текстовый слой по ширине: maxWidth в px композиции, minScale в % (напр. 60).
+DP.fitText = function (layer, maxWidth, minScale) {
+    var scaleProp = layer.property("ADBE Transform Group").property("ADBE Scale");
+    var base = scaleProp.value;
+    var w = layer.sourceRectAtTime(layer.containingComp.time, false).width * base[0] / 100;
+    if (w <= maxWidth) { return 100; }
+    var k = Math.max(maxWidth / w, (minScale || 50) / 100);
+    var v = [base[0] * k, base[1] * k];
+    if (base.length > 2) { v.push(base[2]); }
+    scaleProp.setValue(v);
+    if (maxWidth / w < (minScale || 50) / 100) { DP.log("ВНИМАНИЕ: «" + layer.name + "» не влезает даже при " + minScale + "%"); }
+    return k * 100;
+};
+
+// ---------- рендер ----------
+
+DP.queue = function (comp, omTemplate, outDir) {
+    var rq = app.project.renderQueue.items.add(comp);
+    var om = rq.outputModule(1);
+    if (omTemplate) {
+        try { om.applyTemplate(omTemplate); } catch (e) { DP.log("Нет шаблона вывода «" + omTemplate + "», остаётся по умолчанию"); }
+    }
+    var ext = om.file ? om.file.name.replace(/^.*(\.[^.]+)$/, "$1") : ".mov";
+    if (ext.indexOf(".") !== 0) { ext = ".mov"; }
+    var dir = new Folder(DP.path(outDir));
+    if (!dir.exists) { dir.create(); }
+    om.file = new File(dir.fsName + "/" + comp.name + ext);
+    return rq;
+};
+
+DP.save = function (path) {
+    var f = new File(DP.path(path));
+    if (!f.parent.exists) { f.parent.create(); }
+    app.project.save(f);
+    DP.log("Сохранено: " + f.fsName);
+};
+
+DP.open = function (path) {
+    var f = new File(DP.path(path));
+    if (f.exists) { app.open(f); DP.log("Открыт проект: " + f.fsName); return true; }
+    return false;
+};

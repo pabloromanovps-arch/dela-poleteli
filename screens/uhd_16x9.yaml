@@ -1,0 +1,9 @@
+id: uhd_16x9
+title: UHD 3840×2160, 16:9
+status: standard
+canvas: {width: 3840, height: 2160}
+fps: 50
+safe_area: {x: 192, y: 108, w: 3456, h: 1944}
+dead_zones: []
+outputs: []
+delivery: {codec: prores_422hq, container: mov, alpha: false, color: rec709, bit_depth: 10, naming: "<project>_<shot>_v<NN>"}
