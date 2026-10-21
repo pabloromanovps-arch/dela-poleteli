@@ -9,5 +9,6 @@
     "unreal_cmd": ""
   },
   "ocio": "",
+  "ae_startup_wait_s": 60,
   "unreal_remote_port": 30010
 }

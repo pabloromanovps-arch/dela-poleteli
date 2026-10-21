@@ -22,6 +22,7 @@ import os
 import platform
 import subprocess
 import sys
+import time
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -148,11 +149,34 @@ def write_ae_args(args_dict):
         json.dump(args_dict, f, ensure_ascii=False, indent=2)
 
 
+def ae_running_win():
+    out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq AfterFX.exe", "/NH"],
+                         capture_output=True, text=True, errors="replace").stdout
+    return "AfterFX.exe" in out
+
+
+def ensure_ae_running_win(afterfx):
+    """Если AE не запущен — запускаем и ждём полной загрузки.
+    Иначе `AfterFX.exe -r` приходит во время заставки, когда модуль скриптов ещё не загружен,
+    и AE отвечает «Unable to execute script. The Scripting plugin is not installed»."""
+    if ae_running_win():
+        return
+    wait = int(CONFIG.get("ae_startup_wait_s", 60))
+    print(f"[run] After Effects не запущен — открываю и жду загрузки ({wait} c; ae_startup_wait_s в studio.config.json)")
+    subprocess.Popen([afterfx])
+    deadline = time.time() + 120
+    while not ae_running_win() and time.time() < deadline:
+        time.sleep(2)
+    time.sleep(wait)
+
+
 def cmd_ae_script(a):
     script = os.path.abspath(a.script)
     write_ae_args(parse_kv(a.args))
     if IS_WIN:
-        return run([require_app("afterfx"), "-r", script], "ae_script")
+        afterfx = require_app("afterfx")
+        ensure_ae_running_win(afterfx)
+        return run([afterfx, "-r", script], "ae_script")
     if IS_MAC:
         app = os.path.basename(require_app("afterfx")).replace(".app", "")
         apple = f'tell application "{app}" to DoScriptFile "{script}"'
