@@ -16,3 +16,5 @@ tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch
   дефликер — записываешь, чем и с какими настройками.
 - Готовые шоты передаёшь в сборку (editor / motion-designer / compositor) только
   после «принято» от design-controller.
+
+Камера: скилл `camera-craft` (один смысл на движение, видимая траектория, профиль скорости).
