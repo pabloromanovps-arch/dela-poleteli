@@ -43,7 +43,33 @@ class Deck:
         self.n = 0
 
     def c(self, role):
+        if role == "muted":
+            return RGBColor(*self.muted())
         return RGBColor(*B.rgb(B.color(self.b, role)))
+
+    @staticmethod
+    def _lum(rgb):
+        f = lambda v: (v / 255 / 12.92) if v / 255 <= 0.03928 else ((v / 255 + 0.055) / 1.055) ** 2.4
+        r, g, b = (f(v) for v in rgb)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+    def _contrast(self, a, b):
+        la, lb = sorted((self._lum(a), self._lum(b)), reverse=True)
+        return (la + 0.05) / (lb + 0.05)
+
+    def muted(self):
+        """Приглушённый цвет служебного текста: смесь text и bg, контраст к фону ≥ 4,5:1.
+        Роль secondary в брендах часто задана как «декор, текст запрещён» — для текста она не годится."""
+        if not hasattr(self, "_muted"):
+            fg, bg = B.rgb(B.color(self.b, "text")), B.rgb(B.color(self.b, "bg"))
+            t = 0.55
+            while True:
+                mix = tuple(round(bg[i] + (fg[i] - bg[i]) * t) for i in range(3))
+                if self._contrast(mix, bg) >= 4.5 or t >= 1:
+                    break
+                t += 0.05
+            self._muted = mix
+        return self._muted
 
     # ---------- примитивы ----------
 
@@ -56,6 +82,8 @@ class Deck:
 
     def text(self, s, x, y, w, h, txt, size, role="text", font=None, bold=False, align=PP_ALIGN.LEFT,
              anchor=MSO_ANCHOR.TOP, spacing=None):
+        if role == "secondary":  # текст — только читаемым приглушённым цветом
+            role = "muted"
         box = s.shapes.add_textbox(int(x), int(y), int(w), int(h))
         tf = box.text_frame
         tf.word_wrap = True
@@ -82,14 +110,23 @@ class Deck:
         shp.shadow.inherit = False
         return shp
 
-    def picture(self, s, path, x, y, w, h, label=""):
+    def picture(self, s, path, x, y, w, h, label="", fit="auto"):
+        """fit: cover — заполнить рамку с кадрированием; contain — вписать целиком;
+        auto — contain, если пропорции кадра и рамки различаются более чем в 1,6 раза (широкие панорамы)."""
         full = os.path.join(self.base, path) if path else ""
         if path and os.path.exists(full):
             from PIL import Image
             iw, ih = Image.open(full).size
-            pic = s.shapes.add_picture(full, int(x), int(y), int(w), int(h))
-            # кадрирование «cover» без искажения пропорций
             box_r, img_r = w / h, iw / ih
+            if fit == "auto":
+                fit = "contain" if max(img_r / box_r, box_r / img_r) > 1.6 else "cover"
+            if fit == "contain":
+                k = min(w / iw, h / ih)
+                pw, ph = iw * k, ih * k
+                self.contained = True
+                return s.shapes.add_picture(full, int(x + (w - pw) / 2), int(y + (h - ph) / 2), int(pw), int(ph))
+            self.contained = False
+            pic = s.shapes.add_picture(full, int(x), int(y), int(w), int(h))
             if img_r > box_r:
                 crop = (1 - box_r / img_r) / 2
                 pic.crop_left = pic.crop_right = crop
@@ -156,10 +193,15 @@ class Deck:
     def image(self, sd):
         s = self.new()
         if sd.get("full", True):
-            self.picture(s, sd.get("image"), 0, 0, SW, SH, sd.get("caption"))
+            self.contained = False
+            self.picture(s, sd.get("image"), 0, 0, SW, SH, sd.get("caption"), sd.get("fit", "auto"))
             if sd.get("caption"):
-                self.rect(s, M - Pt(8), SH - M - Pt(30), COL * 6, Pt(30), role="bg").fill.transparency = 0.15
-                self.text(s, M, SH - M - Pt(26), COL * 6, Pt(24), sd["caption"], 14)
+                if self.contained:  # панорама вписана целиком — подпись под ней, на фоне слайда
+                    self.kicker(s, sd.get("kicker"))
+                    self.text(s, M, SH - M - Pt(40), COL * 11, Pt(40), sd["caption"], 14)
+                else:
+                    self.rect(s, M - Pt(8), SH - M - Pt(30), COL * 6, Pt(30), role="bg").fill.transparency = 0.15
+                    self.text(s, M, SH - M - Pt(26), COL * 6, Pt(24), sd["caption"], 14)
         else:
             self.kicker(s, sd.get("kicker"))
             self.picture(s, sd.get("image"), M, M + Pt(36), SW - 2 * M, SH - 2 * M - Pt(70), sd.get("caption"))

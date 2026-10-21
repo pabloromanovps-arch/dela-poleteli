@@ -11,8 +11,8 @@ colors:
   accent:    {hex: "#C9A961", note: "золото на логотипе и ключе — ПРИБЛИЗИТЕЛЬНО, уточнить по логотипу"}
 proportions: {bg: 70, primary: 15, accent: 10, text: 5}
 fonts:
-  heading: {family: "", weight: "", file: "", license: "", cyrillic: true, note: "в презентациях — гротеск; логотип — шрифт с засечками в капсе. Запросить у клиента"}
-  body:    {family: "", weight: "", file: "", license: "", cyrillic: true}
+  heading: {family: "Inter Display", weight: "", file: "", license: "SIL OFL", cyrillic: true, note: "временно для теста, выбор шрифтов — за владельцем (fonthound). В презентациях клиента — гротеск; логотип — шрифт с засечками в капсе. Запросить у клиента"}
+  body:    {family: "Inter", weight: "", file: "", license: "SIL OFL", cyrillic: true, note: "временно для теста, выбор шрифтов — за владельцем (fonthound)"}
 logos:
   primary: {file: "", on: dark, note: "логотип «Путеводная звезда» (звезда-ключ) — запросить вектор"}
 clearspace: ""
