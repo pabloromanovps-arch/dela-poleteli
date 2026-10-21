@@ -16,3 +16,8 @@ Thumbs.db
 *Auto-Save*
 projects/*/06_build/**/render/
 projects/*/08_delivery/**/*.mov
+
+# сырые ИИ-генерации — в облако
+projects/*/ai/gens/**
+!projects/*/ai/gens/.gitkeep
+projects/*/ai/shots/**/*.mp4

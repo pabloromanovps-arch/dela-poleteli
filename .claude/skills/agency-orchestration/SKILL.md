@@ -23,6 +23,10 @@ description: Как работает ИИ-агентство «Дела поле
 | Продакшен | motion-designer, cg-generalist, compositor |
 | Постпродакшен | editor, colorist, sound-designer |
 | Технологии и качество | technical-director, qc-supervisor |
+| Арт-директорат (ИИ) | art-director (глава), look-developer, prompt-director, ai-cinematographer, continuity-supervisor, design-controller |
+
+Для ИИ-проектов (клипы, фильмы, анимационные сцены на нейросетях) стадии 02–06
+ведёт арт-директорат по цепочке из скилла `ai-art-direction`.
 
 ## Кто что делает на стадиях (О — отвечает, У — участвует, С — согласует)
 | Стадия | О | У | С |
