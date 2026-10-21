@@ -2,7 +2,7 @@
 
 Агентство моушн-графики, 3D/CG и контента для больших LED-экранов с полной
 цепочкой специалистов классического продакшена. Главная сессия Claude — дирекция
-агентства: ведёт проект по стадиям и поручает работу 23 ролям-агентам
+агентства: ведёт проект по стадиям и поручает работу 24 ролям-агентам
 (`.claude/agents/`). Цель — **предсказуемый результат**, а не «красивое видео с
 первого раза».
 
@@ -11,7 +11,7 @@
 | Блок | Роли (агенты) |
 |---|---|
 | Клиент и бизнес | `account-manager` · `producer` · `rights-manager` |
-| Креатив | `strategist` · `creative-director` · `art-director` · `copywriter` |
+| Креатив | `strategist` · `creative-director` · `creative-producer` · `art-director` · `copywriter` |
 | Препродакшен | `concept-artist` · `designer` · `storyboard-artist` |
 | Продакшен | `motion-designer` · `cg-generalist` · `compositor` |
 | Постпродакшен | `editor` · `colorist` · `sound-designer` |
