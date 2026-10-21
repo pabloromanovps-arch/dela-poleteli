@@ -52,6 +52,7 @@ PITCH, SEC_GAP = 1.1, 1.6
 RP = 0.36                      # радиус штифта, u (1 u = 5 мм)
 GAP = 0.035                    # полу-зазор шва, u (0.06 u = 0.3 мм)
 FIL = 0.03                     # фаска/скругление торцов (0.15 мм)
+BODY_R = (0.45, 0.65)           # шероховатость плоскости разреза (шлифованная сталь, вариация по шуму)
 WIN_Z, PK_Z = 1.6, -1.3       # окно пружин начинается выше шва на 1.6 u; карман ключа ниже шва на 1.3 u
 D_LEN = 0.55                   # длина верхнего штифта (драйвера)
 LEN = [1.0 + 1.9 * h for h in H]   # длина нижнего штифта = хэш id
@@ -465,7 +466,7 @@ def materials(scale="s1"):
                           scratch=(0.05, 1.8, 1.8, 0.012), oil=0.12, wear=0.28, wear_rough=0.12, brass=True, per_object=False)
     M["pin"] = make_metal("pin", "#8D9695", 0.18, 0.34, 0.5, (0, 0, 1), (60, 60, 3), 0.12,
                           scratch=(2.0, 2.0, 0.05, 0.010), patina=True, wear=0.0)
-    M["body"] = make_metal("body", "#6E7A7B", 0.26, 0.40, 0.8, (1, 0, 0), (2.0, 60, 60), 0.10,
+    M["body"] = make_metal("body", "#6E7A7B", BODY_R[0], BODY_R[1], 0.8, (1, 0, 0), (2.0, 60, 60), 0.10,
                            scratch=(0.035, 0.7, 0.7, 0.007), graphite=0.18, oil=0.10, sec_ramp=SEC_GRAPH, per_object=False)
     M["spring"] = make_metal("spring", "#59646A", 0.30, 0.42, 0.0, (0, 0, 1), (20, 20, 20), 0.05, patina=False, per_object=True)
     M["ghost"] = make_metal("ghost", "#3C4849", 0.55, 0.7, 0.0, (1, 0, 0), (2.0, 60, 60), 0.05, patina=False, per_object=False)
