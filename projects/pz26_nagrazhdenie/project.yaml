@@ -32,6 +32,10 @@ tasks:             # передача работы между ролями — �
      in: [02_concept/ideas_v2.md], out: [03_style/thumbs/], status: done, from: creative-director}
   - {id: t011, role: owner, task: "выбрать направление / дать правки по эскизам (ворота 02)", in: [03_style/thumbs/_contact_sheet.png, 02_concept/ideas_v2.md],
      out: [project.yaml gates.02_concept], status: todo, from: art-director}
+  - {id: t012, role: creative-producer, task: "3 концепции события на выбор клиенту (A «Из рук в руки», B «Линия среза», C «Парадный ход»): режиссура по секундам, мэтч потолок→экран, роли экранов, проход 35, ядро/максимум",
+     in: [00_brief/REAL_PROJECT.md, 02_concept/ideas_v2.md, 03_style/direction.md], out: [02_concept/show_concepts.md], status: done, from: owner}
+  - {id: t013, role: designer, task: "стайлфреймы S1–S4 направления «Зазор» (для концепции B)", in: [03_style/direction.md],
+     out: [03_style/frames/], status: doing, from: art-director}
 gates:            # approved: true ставит ЧЕЛОВЕК после просмотра артефакта
   00_brief:       {approved: false, by: "", date: ""}
   01_research:    {approved: false, by: "", date: ""}

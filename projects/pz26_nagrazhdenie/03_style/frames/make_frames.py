@@ -31,6 +31,7 @@ ap.add_argument("--scale", type=float, default=1.0, help="масштаб раз�
 ap.add_argument("--out", default=HERE)
 ap.add_argument("--scratch", default=os.path.join(HERE, "_scratch"))
 ap.add_argument("--tag", default="")
+ap.add_argument("--crop", default="", help="x0,y0,x1,y1 в долях кадра: рендер только области (для подбора)")
 ap.add_argument("--P", default="{}", help="JSON-переопределение параметров света (для подбора)")
 A = ap.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:])
 SEED = 2610
@@ -49,8 +50,9 @@ assert len(IDS) == 35
 H = [int(hashlib.md5(i.encode()).hexdigest()[:8], 16) / 2**32 for i in IDS]
 PITCH, SEC_GAP = 1.1, 1.6
 RP = 0.36                      # радиус штифта, u (1 u = 5 мм)
-GAP = 0.03                     # полу-зазор шва, u (0.06 u = 0.3 мм)
+GAP = 0.035                    # полу-зазор шва, u (0.06 u = 0.3 мм)
 FIL = 0.03                     # фаска/скругление торцов (0.15 мм)
+WIN_Z, PK_Z = 1.6, -1.3       # окно пружин начинается выше шва на 1.6 u; карман ключа ниже шва на 1.3 u
 D_LEN = 0.55                   # длина верхнего штифта (драйвера)
 LEN = [1.0 + 1.9 * h for h in H]   # длина нижнего штифта = хэш id
 
@@ -233,17 +235,27 @@ def profile(f):
     return 1 - (1 - RIGHT_F) * (f - PEAK_F) / (1 - PEAK_F) if f <= 1 else RIGHT_F
 
 
-def make_emit(name, peak, x0=-25.0, x1=25.0, color="#FFE9C2", prof=None):
-    """эмиссия шва с яркостью вдоль X по профилю; x0..x1 — ширина кадра в мировых u."""
+def make_emit(name, peak, x0=-25.0, x1=25.0, color="#FFE9C2", prof=None, K=1.0):
+    """эмиссия шва с яркостью вдоль X по профилю; x0..x1 — ширина кадра в мировых u.
+    Камера видит только переднюю грань (ядро линии); верхняя/нижняя грани светят, но для камеры прозрачны."""
     m = bpy.data.materials.new(name); m.use_nodes = True; t = m.node_tree
     for n in list(t.nodes): t.nodes.remove(n)
     tc = nd(t, "ShaderNodeTexCoord"); sep = nd(t, "ShaderNodeSeparateXYZ"); t.links.new(tc.outputs["Object"], sep.inputs[0])
     fx = maprange(t, sep.outputs[0], x0, x1, 0.0, 1.0, True)
     prof = prof or profile
     r = ramp(t, fx, [(i / 10, prof(i / 10)) for i in range(11)])
-    mul = mth(t, "MULTIPLY", r.outputs[0], peak)
+    lp = nd(t, "ShaderNodeLightPath"); gm = nd(t, "ShaderNodeNewGeometry")
+    # K: во сколько раз излучение для освещения сцены (вторичные лучи) сильнее, чем видимое камерой ядро (<= код 240)
+    kk = mth(t, "ADD", mth(t, "MULTIPLY", lp.outputs["Is Camera Ray"], 1.0 - K), K)
+    mul = mth(t, "MULTIPLY", mth(t, "MULTIPLY", r.outputs[0], peak), kk)
     em = nd(t, "ShaderNodeEmission"); em.inputs["Color"].default_value = lin(color); t.links.new(mul.outputs[0], em.inputs["Strength"])
-    out = nd(t, "ShaderNodeOutputMaterial"); t.links.new(em.outputs[0], out.inputs["Surface"]); return m
+    nsep = nd(t, "ShaderNodeSeparateXYZ"); t.links.new(gm.outputs["Normal"], nsep.inputs[0])
+    ny = mth(t, "ABSOLUTE", nsep.outputs[1])
+    side = mth(t, "LESS_THAN", ny, 0.5)                       # 1 для верхней/нижней граней
+    hide = mth(t, "MULTIPLY", side, lp.outputs["Is Camera Ray"])
+    tr = nd(t, "ShaderNodeBsdfTransparent")
+    mx = nd(t, "ShaderNodeMixShader"); t.links.new(hide.outputs[0], mx.inputs[0]); t.links.new(em.outputs[0], mx.inputs[1]); t.links.new(tr.outputs[0], mx.inputs[2])
+    out = nd(t, "ShaderNodeOutputMaterial"); t.links.new(mx.outputs[0], out.inputs["Surface"]); return m
 
 
 def make_matte(name, hexc, rough=0.85, metallic=0.0):
@@ -434,7 +446,11 @@ def look_cam(target, dist, yaw, pitch, lens, fstop, focus, W, H, width_u, line_p
 def render_png(path):
     sc = bpy.context.scene; r = sc.render
     r.image_settings.file_format = "PNG"; r.image_settings.color_mode = "RGB"; r.image_settings.color_depth = "16"
-    r.filepath = path; bpy.ops.render.render(write_still=True)
+    if A.crop:
+        x0, y0, x1, y1 = [float(v) for v in A.crop.split(",")]
+        r.use_border = True; r.use_crop_to_border = True
+        r.border_min_x, r.border_max_x, r.border_min_y, r.border_max_y = x0, x1, 1 - y1, 1 - y0
+    r.filepath = os.path.abspath(path); bpy.ops.render.render(write_still=True)
 
 
 # ------------------------------------------------------------------ общий «замок»: секции в плоскости разреза
@@ -443,13 +459,16 @@ SEC_GRAPH = [0.7, 1.0, 0.45, 0.9, 0.3, 0.8, 0.55]     # покрытие гра�
 
 def materials(scale="s1"):
     M = {}
-    M["brass"] = make_metal("brass", "#8A6A2E", 0.22, 0.38, 0.6, (0, 0, 1), (60, 60, 3), 0.12,
+    M["brass"] = make_metal("brass", "#AA8A4C", 0.22, 0.38, 0.6, (0, 0, 1), (60, 60, 3), 0.12,
                             scratch=(2.2, 2.2, 0.06, 0.012), oil=0.16, wear=0.35, brass=True, graphite=0.0)
+    M["key"] = make_metal("key", "#8F7440", 0.24, 0.40, 0.6, (1, 0, 0), (3, 60, 60), 0.12,
+                          scratch=(0.05, 1.8, 1.8, 0.012), oil=0.12, wear=0.28, wear_rough=0.12, brass=True, per_object=False)
     M["pin"] = make_metal("pin", "#8D9695", 0.18, 0.34, 0.5, (0, 0, 1), (60, 60, 3), 0.12,
                           scratch=(2.0, 2.0, 0.05, 0.010), patina=True, wear=0.0)
     M["body"] = make_metal("body", "#6E7A7B", 0.26, 0.40, 0.8, (1, 0, 0), (2.0, 60, 60), 0.10,
                            scratch=(0.035, 0.7, 0.7, 0.007), graphite=0.18, oil=0.10, sec_ramp=SEC_GRAPH, per_object=False)
-    M["spring"] = make_metal("spring", "#8D9695", 0.30, 0.42, 0.0, (0, 0, 1), (20, 20, 20), 0.05, patina=False, per_object=True)
+    M["spring"] = make_metal("spring", "#59646A", 0.30, 0.42, 0.0, (0, 0, 1), (20, 20, 20), 0.05, patina=False, per_object=True)
+    M["ghost"] = make_metal("ghost", "#3C4849", 0.55, 0.7, 0.0, (1, 0, 0), (2.0, 60, 60), 0.05, patina=False, per_object=False)
     M["graphite"] = make_matte("graphite", "#070E11", 0.92, 0.1)
     M["velvet"] = make_velvet()
     return M
@@ -462,16 +481,17 @@ class Lock:
         self.M, self.rng, self.y, self.x, self.ghost = M, rng, y_off, x_off, ghost
 
     def sections(self, kmax=7, key=True):
-        M, rng = self.M, self.rng
+        M, rng = dict(self.M), self.rng
+        if self.ghost: M["body"] = M["pin"] = M["brass"] = M["spring"] = M["key"] = self.M["ghost"]
         for k in range(kmax):
             xs = [PX[5 * k + j] + self.x for j in range(5)]
             x0, x1 = xs[0] - 0.65, xs[-1] + 0.65
             # корпус: нижняя полоска с каналами + задняя стенка (окно пружин открыто вверх и вперёд)
             up = box("shell%d" % k, x0, x1, self.y + 0.0, self.y + 2.2, GAP, 8.0, M["body"])
-            win = box("win", x0 - 1, x1 + 1, self.y - 1.5, self.y + 1.0, D_LEN + 0.04, 9.0, None, hidden=True); boolean(up, win)
-            ch = merged_cutters("ch", xs, self.y, 0.0, 1.5, RP + 0.10); boolean(up, ch); bevel(up)
-            dn = box("plug%d" % k, x0, x1, self.y + 0.0, self.y + 2.2, -5.3, -GAP, M["body"])
-            pk = box("pocket", x0 - 1, x1 + 1, self.y - 1.5, self.y + 1.0, -4.7, -0.95, None, hidden=True); boolean(dn, pk)
+            win = box("win", x0 - 1, x1 + 1, self.y - 1.5, self.y + 1.0, WIN_Z, 9.0, None, hidden=True); boolean(up, win)
+            ch = merged_cutters("ch", xs, self.y, 0.0, WIN_Z + 0.2, RP + 0.10); boolean(up, ch); bevel(up)
+            dn = box("plug%d" % k, x0, x1, self.y + 0.0, self.y + 2.2, -9.0, -GAP, M["body"])
+            pk = box("pocket", x0 - 1, x1 + 1, self.y - 1.5, self.y + 1.0, -9.5, PK_Z, None, hidden=True); boolean(dn, pk)
             ch2 = merged_cutters("ch2", xs, self.y, -1.6, 0.0, RP + 0.10); boolean(dn, ch2); bevel(dn)
             for j in range(5):
                 i = 5 * k + j; px = xs[j]
@@ -484,11 +504,11 @@ class Lock:
         # ключ (профиль по хэш-высотам) и ряд ниже
         if key:
             xs_all = [p + self.x for p in PX]
-            kpoly = poly_prism("key", key_polygon(xs_all, LEN, -4.4), self.y + 0.28, self.y + 0.92, M["brass"], 0.03)
+            kpoly = poly_prism("key", key_polygon(xs_all, LEN, -4.4), self.y + 0.28, self.y + 0.92, M["key"], 0.03)
         return self
 
 
-def build_seam(x0=-30, x1=30, y0=-0.10, y1=3.0, mat=None):
+def build_seam(x0=-30, x1=30, y0=-0.50, y1=3.0, mat=None):
     return box("seam", x0, x1, y0, y1, -GAP * 0.93, GAP * 0.93, mat)
 
 
@@ -508,12 +528,18 @@ def scene_s1(W, H, samples, P):
     sc = reset(W, H, samples, P.get("exposure", 0.0)); M = materials()
     rng = random.Random(SEED)
     lock = Lock(M, rng).sections()
-    ghost = Lock(M, random.Random(SEED + 1), y_off=8.0, x_off=3.55, ghost=True).sections(key=False)
-    seam = build_seam(mat=make_emit("seam", P["seam"]))
-    spill_lights(P["spill"], y0=P.get("spill_y0", -0.8), y1=P.get("spill_y1", 0.6))
+    if P.get("ghost", 1): ghost = Lock(M, random.Random(SEED + 1), y_off=8.0, x_off=3.55, ghost=True).sections(key=False)
+    seam = build_seam(y0=P.get("seam_y0", -0.50), mat=make_emit("seam", P["seam"], K=P.get("K", 4.0)))
+    if P.get("spill", 0): spill_lights(P["spill"], y0=P.get("spill_y0", -0.35), y1=P.get("spill_y1", 0.1), color=P.get("spill_col", (1.0, 0.93, 0.80)))
+    if P.get("spillB", 0): spill_lights(P["spillB"], y0=-1.6, y1=0.1, color=P.get("spill_col", (1.0, 0.93, 0.80)))
+    if P.get("ghost", 1): spill_lights(P.get("ghost_light", 150.0), y0=6.5, y1=11.0, color=(1.0, 0.93, 0.80))
     # холодный контровой сверху-сзади (<=12 % ключевого)
-    area_light("rim", (-4, 5.0, 7.5), (-120, 0, 0), 24, 3, P["rim"], lin("#5FA3B3"), 120)
+    rl = area_light("rim", (-4, 5.0, 7.5), (0, 0, 0), 24, 3, P["rim"], lin("#5FA3B3"), 120)
+    rl.rotation_euler = (Vector((-4, 0.0, 1.5)) - Vector(rl.location)).to_track_quat("-Z", "Y").to_euler()
     world_fill(P["fill"])
+    if P.get("fillL", 0):
+        fl = area_light("fillL", (-40, -8.0, 1.5), (0, 0, 0), 16, 16, P["fillL"], lin(P.get("fillL_col", "#5FA3B3")), 120)
+        fl.rotation_euler = (Vector((0, 0, 0)) - Vector(fl.location)).to_track_quat("-Z", "Y").to_euler()
     # бархат на 80 мм позади
     v = box("velvet", -90, 90, 16.0, 16.2, -40, 40, M["velvet"])
     focus = (-6.0, 0, 0)
@@ -523,7 +549,7 @@ def scene_s1(W, H, samples, P):
 
 
 import json
-S1P = dict(seam=6.0, spill=300.0, rim=60.0, fill=0.03, fstop=4.0, exposure=0.0)
+S1P = dict(seam=4.0, spill=1100.0, rim=25.0, fill=0.05, fillL=1500.0, fillL_col="#8FB4BC", fstop=4.0, exposure=0.0, ghost_gain=0.15)
 S1P.update(json.loads(A.P))
 
 
