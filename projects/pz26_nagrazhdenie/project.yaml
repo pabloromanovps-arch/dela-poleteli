@@ -16,11 +16,16 @@ tasks:             # передача работы между ролями — �
      in: [01_research/strategy.md, 00_brief/source/koncepciya_filma.txt, 00_brief/source/koncepciya_premii.txt, 00_brief/TEST_RUN.md],
      out: [02_concept/ideas.md], status: done, from: strategist}   # 8 идей, отобраны: 1 Заготовка (рекомендована), 3 Эстафета, 2 Семь ключей
   - {id: t005, role: art-director, task: "визуальные направления и концепт по 3 отобранным идеям (Заготовка, Эстафета, Семь ключей): крючок, палитра из brand.yaml, типографика, материал, свет, язык движения, ритм, референсы из references/, производство Blender+AE, риски, рекомендация",
-     in: [02_concept/ideas.md, 01_research/strategy.md, brands/pz_premiya/brand.yaml], out: [02_concept/concept.md], status: todo, from: creative-director}
+     in: [02_concept/ideas.md, 01_research/strategy.md, brands/pz_premiya/brand.yaml], out: [02_concept/concept.md], status: done, from: creative-director}
   - {id: t006, role: copywriter, task: "сценарий (4 части, 7 категорий по 5 лауреатов, финал) и текст диктора; фразы лауреатов - конкретная деталь, без штампов п.4.4(9); по идее 1 Заготовка, с вариантами под 2 и 3",
-     in: [02_concept/ideas.md, 01_research/strategy.md, data/laureates.csv], out: [02_concept/script.md, 02_concept/vo.md], status: todo, from: creative-director}
+     in: [02_concept/ideas.md, 01_research/strategy.md, data/laureates.csv], out: [02_concept/script.md, 02_concept/vo.md], status: done, from: creative-director}
   - {id: t004, role: technical-director, task: "профиль экрана: пока screen=custom — запросить у клиента данные экранов (письмо 01) и заполнить screens/",
      in: [client/letters/01_questions.md], out: [screens/<профиль>.yaml], status: todo, from: producer}
+  - {id: t007, role: designer, task: "презентация концепта для показа (внутренняя версия владельцу): 3 направления, рекомендация A, механика, экраны, как делаем без съёмок, что нужно решить",
+     in: [02_concept/concept.md, 02_concept/ideas.md, 02_concept/script.md, brands/pz_premiya/brand.yaml, 06_build/rnd/key_test.png],
+     out: [02_concept/concept_deck.yaml, 02_concept/concept_deck.pptx, 02_concept/concept_deck.pdf], status: doing, from: art-director}
+  - {id: t008, role: qc-supervisor, task: "независимая проверка презентации концепта и согласованности документов 00–02",
+     in: [02_concept/concept_deck.pdf], out: [07_review/qc.md], status: todo, from: designer}
 gates:            # approved: true ставит ЧЕЛОВЕК после просмотра артефакта
   00_brief:       {approved: false, by: "", date: ""}
   01_research:    {approved: false, by: "", date: ""}
