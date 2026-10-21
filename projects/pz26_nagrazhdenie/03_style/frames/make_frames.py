@@ -640,7 +640,7 @@ def scene_s3(W, H_, samples, P):
     build_seam(0.0, 90.0, y0=-3.75, y1=-2.9, mat=make_emit("seam", P["seam"], 0.0, 40.0, prof_x=lambda x: 1.0 - 0.45 * min(1.0, x / 40.0), K=P["K"]))
     # скважина изнутри: слабое свечение стенки щели + крошечный источник в устье щели
     wall = box("hole_glow", 0.03, 4.0, 0.33, 0.335, Z_AX - 1.4, Z_AX + 1.4, make_emit("hole", P["hole"], 0, 4, prof_x=lambda x: 1.0, K=1.0))
-    tl = area_light("tip_light", (0.25, 0.0, Z_AX - 0.1), (0, 90, 0), 0.5, 2.3, P["tip"], lin("#FFE9C2"), 140)
+    tl = area_light("tip_light", (0.05, 0.0, Z_AX - 0.1), (0, 90, 0), 2.3, 0.5, P["tip"], lin("#FFE9C2"), 140)
     tl2 = area_light("tip_light2", (0.6, -0.9, Z_AX + 0.9), (0, 0, 0), 1.0, 1.0, P.get("tip2", 0), lin("#FFE9C2"), 140); aim(tl2, (-1.7, 0, Z_AX + 0.5))
     common_lights(P, rim_loc=(-10, 6.0, 4.5), rim_tgt=(-8, 0, -1.5), fill_tgt=(-3, 0, -2.5))
     if P.get("keyfill", 0):
