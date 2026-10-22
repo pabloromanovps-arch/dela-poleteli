@@ -48,23 +48,26 @@ FONT_BODY = "/usr/share/fonts/opentype/inter/Inter-Regular.otf"
 
 # ---- параметры (в одном месте; их же пишет README) -------------------------
 P = dict(
-    rib_pitch=26.0,       # шаг рифления, мастер px (52 px холста)
-    rib_jitter=0.07,      # разброс ширины ребра
+    rib_pitch=24.0,       # шаг рифления: 48 px холста (okno_direction п.2.1), стыки 1536/6144 попадают во впадину
+    rib_jitter=0.0,       # ширина ребра строго постоянна (стык во впадине); неидеальность — в амплитуде/яркости рёбер
     rib_amp_gain=1.9,     # A = gain*p/(2*pi): производная смещения 1-gain..1+gain
     rib_amp_jitter=0.10,
     disp=0.12,            # дисперсия: R -12 %, B +12 % амплитуды смещения
-    blur_box=64,          # расфокус по вертикали: бокс (px мастера) ...
-    blur_sigma=14.0,       # ... и гаусс
+    blur_box_wall=96,
+    blur_sigma_wall=22.0,
+    blur_box=44,          # расфокус по вертикали: бокс (px мастера) ...
+    blur_sigma=10.0,       # ... и гаусс
     grain=1.7,            # зерно, LSB
+    haze_floor=(0.0, 0.073, 0.090),   # дымка стекла: самое тёмное ~ код 14-20 (direction п.2.4)
     peak_cap=0.93,        # потолок канала после roll-off (237/255)
     pre_sigma=9.0,
-    pre_sigma_lit=2.0,
+    pre_sigma_lit=1.5,
     halo=0.22,            # доля рассеянного в толще стекла света окон
     halo_sigma=26.0,        # горизонтальный предфильтр мира (мастер px): мелкая фактура фасада не штрихкодит
     seed=2611,
 )
 
-LIT_W, LIT_H = 48, 72            # окно лауреата в мастере (96x144 на холсте)
+LIT_W, LIT_H = 36, 54            # окно лауреата в мастере (72x108 на холсте)
 PITCH_X, PITCH_Y = 75.0, 96.0    # шаг фасада
 ROW0 = 130.0
 SECTOR_K = [4, 15, 20, 25, 30, 35, 46]       # центральная ось сектора (номер оси)
@@ -264,7 +267,7 @@ def rib_geometry(seed):
     p = P["rib_pitch"]
     n = int(W / p) + 6
     widths = p * np.clip(1 + P["rib_jitter"] * rs.randn(n), 0.8, 1.2)
-    b = np.cumsum(np.concatenate([[-rs.rand() * p], widths]))
+    b = np.cumsum(np.concatenate([[0.0 - 2 * p], widths]))   # граница ребра ровно на x=0, 24, 48 ...
     xs = np.arange(W, dtype=np.float32) + 0.5
     idx = np.searchsorted(b, xs) - 1
     t = (xs - b[idx]) / (b[idx + 1] - b[idx])
@@ -294,30 +297,35 @@ def sample_x(img, xs):
     return img[rows, x0] * (1 - f) + img[rows, x0 + 1] * f
 
 
-def flute(world_lin, geo, fade=None, emit_lin=None):
-    """Рифлёное стекло: смещение по синусоиде + дисперсия + расфокус по вертикали.
-    world_lin — линейный свет (H,W,3). fade (H,W) 0..1: 1 — полное стекло, 0 — чисто."""
-    pre = gaussian_filter1d(world_lin, P['pre_sigma'], axis=1)   # мелкая фактура фасада (стена, переплёты) смазана до рифления
-    if emit_lin is not None:                                    # огни окон — почти резкие, чтобы рифление рвало их на штрихи
-        pre = pre + gaussian_filter1d(emit_lin, P['pre_sigma_lit'], axis=1)
-        pre = pre + P['halo'] * gaussian_filter1d(emit_lin, P['halo_sigma'], axis=1)   # рассеяние света внутри стекла
+def displace(pre, geo, fade):
     d = disp_field(geo, fade)
-    xs = np.arange(W, dtype=np.float32)[None, :] + 0.5 + d
-    out = np.empty_like(world_lin)
+    out = np.empty_like(pre)
     for c, k in enumerate((1 - P["disp"], 1.0, 1 + P["disp"])):
         base = np.arange(W, dtype=np.float32)[None, :] + d * k
         out[..., c] = sample_x(pre[..., c:c + 1], base)[..., 0]
-    return vblur(out, fade)
+    return out
 
 
-def vblur(img, fade=None):
+def flute(world_lin, geo, fade=None, emit_lin=None):
+    """Рифлёное стекло: смещение по синусоиде + дисперсия + расфокус по вертикали.
+    world_lin — линейный свет стены/окон без огней (H,W,3); emit_lin — огни (почти резкие до стекла).
+    Стена расфокусируется сильнее огней (стена дальше от стекла); fade (H,W) 0..1: 1 — полное стекло, 0 — чисто."""
+    pre = gaussian_filter1d(world_lin, P['pre_sigma'], axis=1)
+    out = vblur(displace(pre, geo, fade), fade, box=P["blur_box_wall"], sigma=P["blur_sigma_wall"])
+    if emit_lin is not None:
+        pl = gaussian_filter1d(emit_lin, P['pre_sigma_lit'], axis=1) + P['halo'] * gaussian_filter1d(emit_lin, P['halo_sigma'], axis=1)
+        out = out + vblur(displace(pl, geo, fade), fade)
+    return out
+
+
+def vblur(img, fade=None, box=None, sigma=None):
     """Расфокус по вертикали (бокс * гаусс). С fade — стек уровней с интерполяцией."""
     def one(f):
         if f <= 0.001:
             return img
-        bx = max(1, int(round(P["blur_box"] * f)))
+        bx = max(1, int(round((box or P["blur_box"]) * f)))
         o = uniform_filter1d(img, bx, axis=0, mode="nearest")
-        return gaussian_filter1d(o, max(0.3, P["blur_sigma"] * f), axis=0, mode="nearest")
+        return gaussian_filter1d(o, max(0.3, (sigma or P["blur_sigma"]) * f), axis=0, mode="nearest")
     if fade is None:
         return one(1.0)
     levels = [0.0, 0.25, 0.5, 0.75, 1.0]
@@ -369,29 +377,37 @@ def glass_surface(geo, seed, strength=None):
 # ============================================================================
 # ключ сверху (K1)
 # ============================================================================
-def key_overlay(x_c, y_tip):
-    """Тонкий латунный ключ, пришедший сверху (стержень 8 px, бородка с двумя вырезами).
-    Возвращает (cov (h,w), color_lin (h,w,3), x-смещение) — рисуется поверх стекла, резко."""
+def key_overlay(x_c, y_tip, tilt_deg=5.0):
+    """Тонкий латунный ключ, пришедший сверху, ось 5 градусов от вертикали. Стержень 8 px, бородка с двумя вырезами.
+    Единственный резкий предмет в кадре; латунь — только свет по кромке; остриё — точка до кода 238.
+    Возвращает (cov, color_lin, x0, y0) — левый верхний угол в мастере."""
     ss = 4
-    w_, h_ = 80, int(y_tip + 30)
+    w_, h_ = 160, int(y_tip + 60)
     big = Image.new("L", (w_ * ss, h_ * ss), 0)
     d = ImageDraw.Draw(big)
-    cx = 40 * ss
-    d.rectangle([cx - 4 * ss, 0, cx + 4 * ss, y_tip * ss], fill=255)
+    cx = 80 * ss
+    d.rectangle([cx - 4 * ss, -50 * ss, cx + 4 * ss, y_tip * ss], fill=255)
     d.rectangle([cx + 4 * ss, (y_tip - 26) * ss, cx + 20 * ss, y_tip * ss], fill=255)
     d.rectangle([cx + 4 * ss, (y_tip - 26) * ss, cx + 20 * ss, (y_tip - 19) * ss], fill=0)
     d.rectangle([cx + 4 * ss, (y_tip - 13) * ss, cx + 13 * ss, (y_tip - 6) * ss], fill=0)
     cov = np.asarray(big.resize((w_, h_), Image.LANCZOS), np.float32) / 255.0
     yy, xx = np.mgrid[0:h_, 0:w_].astype(np.float32)
-    u = xx - 40
-    # латунь только как свет: тёмное тело + блик по левой грани + угол бородки
-    body = 0.16 + 0.10 * np.clip(yy / y_tip, 0, 1)
-    edgeL = np.exp(-((u + 3.0) / 0.9) ** 2) * (0.45 + 0.55 * np.clip(yy / y_tip, 0, 1) ** 1.5)
-    edgeR = np.exp(-((u - 3.2) / 0.8) ** 2) * 0.18
-    tip = np.exp(-(((u - 4.5) / 5.0) ** 2 + ((yy - (y_tip - 1)) / 3.0) ** 2)) * 0.9
-    sh = np.clip(body + 0.75 * edgeL + edgeR + tip, 0, 0.95)
-    col = s2l(BRASS_LIGHT)[None, None, :] * (sh ** 1.0)[..., None] * 1.0
-    return cov, col.astype(np.float32), x_c - 40
+    u = xx - 80
+    body = 0.10 + 0.07 * np.clip(yy / y_tip, 0, 1)
+    edgeL = np.exp(-((u + 3.0) / 0.9) ** 2) * (0.35 + 0.65 * np.clip(yy / y_tip, 0, 1) ** 1.5)
+    edgeR = np.exp(-((u - 3.2) / 0.8) ** 2) * 0.12
+    tip = np.exp(-(((u - 5.0) / 3.2) ** 2 + ((yy - (y_tip - 0.5)) / 2.2) ** 2)) * 1.0
+    sh = np.clip(body + 0.60 * edgeL + edgeR, 0, 0.60) + tip * 0.9
+    # дисплейное значение остриё = 0.93*cap -> код 238; тело <= 110
+    col = s2l(BRASS_LIGHT)[None, None, :] * (sh)[..., None]
+    arr = np.concatenate([cov[..., None], col], axis=2)
+    chans = []
+    for c in range(4):
+        im = Image.fromarray(arr[..., c].astype(np.float32), mode="F")
+        im = im.rotate(-tilt_deg, resample=Image.BICUBIC, center=(80, y_tip))   # остриё — центр вращения
+        chans.append(np.asarray(im))
+    arr = np.stack(chans, axis=2)
+    return np.clip(arr[..., 0], 0, 1), np.clip(arr[..., 1:], 0, None).astype(np.float32), x_c - 80, 0
 
 
 # ============================================================================
@@ -427,14 +443,17 @@ def save_pair(arr, outdir, name):
 # ============================================================================
 # K1
 # ============================================================================
-def glass_base(seed, world_pack=None):
-    """Мир за рифлёным стеклом + собственные блики стекла. Линейный свет (H,W,3)."""
+def glass_base(seed, world_pack=None, fade=None):
+    """Мир за рифлёным стеклом + дымка + собственные блики стекла. Линейный свет (H,W,3)."""
     world, emis, emi = world_pack or build_facade()
     geo = rib_geometry(seed)
     lin = s2l(world) * (1 - emis[..., None])
-    g = flute(lin, geo, emit_lin=s2l(emi))
+    g = flute(lin, geo, fade=fade, emit_lin=s2l(emi))
     add, mul = glass_surface(geo, seed + 5)
-    g = g * mul[..., None] + add[..., None] * np.array([0.85, 1.0, 1.0], np.float32)
+    haze = s2l(np.array(P["haze_floor"], np.float32))
+    gf = 1.0 if fade is None else fade[..., None]
+    g = g * mul[..., None] + add[..., None] * np.array([0.85, 1.0, 1.0], np.float32) * gf
+    g = g + haze[None, None, :] * 1.0                 # стекло поднимает чёрное: ночная бирюза, не 0
     return g, geo, (world, emis, emi)
 
 
@@ -442,17 +461,14 @@ def add_key(g, geo):
     k, r, _ = sector_slots()[0]
     cx, cy = win_center(k, r)
     cx = float(round(cx - LIT_W / 2)) + LIT_W / 2
-    y_tip = float(round(cy - LIT_H / 2)) - 24
-    ky, col, ox = key_overlay(cx, y_tip)
+    y_tip = float(round(cy - LIT_H / 2)) - 22
+    ky, col, ox, oy = key_overlay(cx, y_tip)
     h_, w_ = ky.shape
-    ox = int(round(ox))
-    sub = g[0:h_, ox:ox + w_]
-    g[0:h_, ox:ox + w_] = sub * (1 - ky[..., None]) + col * ky[..., None]
-    # матовая подсветка стекла под кончиком ключа: рифлёная, не лучи
-    yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
-    kk = np.exp(-(((xx - cx) / 34.0) ** 2 + ((yy - y_tip) / 44.0) ** 2))
-    ribmod = 0.35 + 0.65 * (geo["hl"][None, :] * 0.6 + 0.4 * np.cos(2 * np.pi * geo["t"])[None, :] ** 2)
-    g += s2l(WARM_LAMP)[None, None, :] * (0.07 * kk * ribmod)[..., None]
+    ox = int(round(ox)); oy = int(round(oy))
+    y0 = max(oy, 0); y1 = min(oy + h_, H)
+    sub = g[y0:y1, ox:ox + w_]
+    kk = ky[y0 - oy:y1 - oy]; cc = col[y0 - oy:y1 - oy]
+    g[y0:y1, ox:ox + w_] = sub * (1 - kk[..., None]) + cc * kk[..., None]
     return g
 
 
@@ -511,7 +527,7 @@ def ellipse_pts(cx, cy, rx, ry, rot=0.0, n=120, wob=None, seed=0, wob_amp=0.0):
 # окно K2 в мастере: 500x625 (4:5), пересекает стык x=768
 AX0, AY0, AW, AH = 505, 72, 500, 625
 LAMP = (432.0, 218.0)     # лампа в локальных координатах окна
-CONSOLE_V = 555           # линия кромки консоли (она же нить)
+CONSOLE_V = 600           # линия кромки консоли (она же нить), чуть выше нижней грани окна (по direction п.8.3 нить на уровне низа)
 THREAD_Y = AY0 + CONSOLE_V
 
 
@@ -603,23 +619,27 @@ def build_interior(seed=5):
     figure = np.clip(np.maximum.reduce([head, jaw, hair, neck, body, strands * 0.8]), 0, 1)
     figure = gaussian_filter(figure, 0.8)
     figure = np.where(yy >= CONSOLE_V, 0, figure)
-    fb = gaussian_filter(figure, 1.8)
-    gy, gx = np.gradient(fb)
-    gn = np.hypot(gx, gy) + 1e-6
-    nx, ny = -gx / gn, -gy / gn
+    from scipy.ndimage import shift as ndshift
     Ldir = np.array([LAMP[0] - hx + 20, LAMP[1] - hy - 6], np.float32)
     Ldir = Ldir / np.hypot(*Ldir)
-    ndl = np.clip(nx * Ldir[0] + ny * Ldir[1], 0, 1)
-    ins = distance_transform_edt(figure > 0.5)
-    rim_w = np.where(yy < 262, 4.2, 3.2)
-    wrap = np.clip(nx * Ldir[0] + ny * Ldir[1], 0, 1) ** 2.0 * np.exp(-ins / 16.0) * 0.30
-    rim = (ndl ** 1.3 * np.exp(-ins / rim_w) + wrap) * (0.78 + 0.22 * smooth_noise((AH, AW), 3, seed + 9))
+    fs = gaussian_filter(figure, 1.0)
+    rim = np.zeros_like(fs)
+    for dist, wgt in ((2.0, 0.45), (4.0, 0.30), (7.0, 0.17), (11.0, 0.08)):   # геометрический кромочный свет: что видит лампу
+        sh_ = ndshift(fs, (-Ldir[1] * dist, -Ldir[0] * dist), order=1, mode="nearest")
+        rim += wgt * np.clip(fs - sh_, 0, 1)
+    rim = gaussian_filter(rim, 0.8)
+    rim *= np.where(yy < 262, 1.15, 1.0)
     rim *= np.interp(yy[:, 0], [0, 200, 340, 555], [1.0, 1.0, 0.75, 0.40])[:, None]
-    rim = np.maximum(rim, strands * 0.35 * (0.5 + 0.5 * ndl))
+    rim = np.maximum(rim, strands * 0.30 * (np.clip(rim * 3, 0, 1)))
+    # нормаль для холодного отсвета слева
+    gy, gx = np.gradient(gaussian_filter(figure, 1.8))
+    gn = np.hypot(gx, gy) + 1e-6
+    nx = -gx / gn
+    ins = distance_transform_edt(figure > 0.5)
     cool = np.clip(-nx, 0, 1) ** 1.6 * np.exp(-ins / 3.2) * 0.07
     body_col = s2l(np.array([0.048, 0.037, 0.030], np.float32))
     soft = (lamp_i / 1.55)[..., None]
-    fig_col = body_col[None, None, :] * (1.4 + 7.0 * soft) + lampc[None, None, :] * (rim * 1.25)[..., None] \
+    fig_col = body_col[None, None, :] * (1.4 + 7.0 * soft) + lampc[None, None, :] * (rim * 2.2)[..., None] \
         + s2l(np.array([0.30, 0.45, 0.47], np.float32))[None, None, :] * cool[..., None]
     face = np.exp(-(((xx - (hx - 2)) / 20.0) ** 2 + ((yy - (hy + 8)) / 28.0) ** 2))
     fig_col = fig_col * (1 - 0.35 * face[..., None])
@@ -661,65 +681,59 @@ def fit_card_lines(draw_font_fn, text, width):
     return [l.replace("\u00a0", " ") for l in lines]
 
 
-def draw_card(lin, data, x_left=65, width=370, y_thread=THREAD_Y, report=None):
-    """Карточка лауреата на боковом экране. ВРЕМЕННЫЙ шрифт Inter. Растёт вверх от нити; номинация под нитью."""
+def draw_card(lin, data, x_left=62, width=372, y_thread=THREAD_Y, report=None):
+    """Карточка лауреата (боковой экран). ВРЕМЕННЫЙ шрифт Inter. Блок растёт вверх от нити (direction п.8.3):
+    снизу вверх номинация, компания, имя; текст стоит на нити как на линейке."""
     name_parts = data["name"].split(" ")
     surname, given = " ".join(name_parts[:-1]), name_parts[-1]
-    nsize_max, csize_max, nom_size = 50, 26, 21
-    def fw(font):
-        return lambda t: font.getlength(t)
-    # имя: сначала фамилия целиком, если шире — по дефису
-    nsize = nsize_max
+    parts = surname.split("-")
+    tokens = ([parts[0] + "-"] + parts[1:]) if len(parts) > 1 else [surname]
+    nsize = 50
     while nsize > 30:
         f = ImageFont.truetype(FONT_NAME, nsize)
-        parts = surname.split("-")
-        tokens = [parts[0] + ("-" if len(parts) > 1 else "")] + parts[1:] if len(parts) > 1 else [surname]
-        if max(f.getlength(t) for t in tokens + [given]) <= width and f.getlength(surname) <= width:
-            break
-        if max(f.getlength(t) for t in tokens + [given]) <= width and len(parts) > 1:
+        if max(f.getlength(t) for t in tokens + [given]) <= width and (f.getlength(surname) <= width or len(parts) > 1):
             break
         nsize -= 1
     fN = ImageFont.truetype(FONT_NAME, nsize)
-    sn_lines = [surname] if fN.getlength(surname) <= width else [parts[0] + "-"] + parts[1:]
+    sn_lines = [surname] if fN.getlength(surname) <= width else tokens
     name_lines = sn_lines + [given]
-    csize = csize_max
+    csize = 26
     while True:
         fC = ImageFont.truetype(FONT_BODY, csize)
-        cl = fit_card_lines(fw(fC), data["company"], width)
+        cl = fit_card_lines(lambda t: fC.getlength(t), data["company"], width)
         if len(cl) <= 3 or csize <= 22:
             break
         csize -= 1
+    nom_size = 21
     fO = ImageFont.truetype(FONT_BODY, nom_size)
-    nl = fit_card_lines(fw(fO), data["nomination"], width)
-    layer = Image.new("L", (W, H), 0)
-    d = ImageDraw.Draw(layer)
+    nl = fit_card_lines(lambda t: fO.getlength(t), data["nomination"], width)
     layers = []
-    y = y_thread + 16                                       # номинация под нитью
-    for l in nl:
-        layers.append((l, fO, y, 0.70)); y += int(nom_size * 1.3)
-    y_end = y
-    y = y_thread - 20                                       # компания над нитью, снизу вверх
+    y = y_thread - 3                                        # нижняя строка на 6 px холста выше нити
+    for l in reversed(nl):
+        y -= int(nom_size * 1.28)
+        layers.append((l, fO, y, 0.72))
+    y -= 14
     for l in reversed(cl):
         y -= int(csize * 1.28)
-        layers.append((l, fC, y, 0.78))
-    y -= 18
+        layers.append((l, fC, y, 0.80))
+    y -= 16
     for i, l in enumerate(reversed(name_lines)):
         y -= int(nsize * 1.04)
-        layers.append((l, fN, y, 1.0 if i == len(name_lines) - 1 else 0.90))   # фамилия 1.0, имя 0.90
+        layers.append((l, fN, y, 1.0 if i else 0.9))
     top = y
-    # рисуем каждую яркость отдельным слоем
     res = lin.copy()
+    base_col = C_TEXT * 0.90 / 0.918                        # #F4EFE4 на 90 % (код ~220)
     for (txt, f, yy_, gain) in layers:
         lay = Image.new("L", (W, H), 0)
         ImageDraw.Draw(lay).text((x_left, yy_), txt, font=f, fill=255)
         a = np.asarray(lay, np.float32) / 255.0
-        col = s2l(C_TEXT * (0.62 + 0.38 * gain) if gain < 1 else C_TEXT)
+        col = s2l(np.clip(base_col * gain, 0, 0.865))
         res = res * (1 - a[..., None]) + col[None, None, :] * a[..., None]
     if report is not None:
-        report.update(dict(name_size_master=nsize, name_size_canvas=nsize * 2, company_size_master=csize,
-                           company_lines=len(cl), name_lines=len(name_lines), nomination_lines=len(nl),
-                           block_top_y_canvas=top * 2, block_bottom_y_canvas=y_end * 2,
-                           max_line_px_canvas=2 * max([fN.getlength(t) for t in name_lines] + [fC.getlength(t) for t in cl])))
+        mx = max([fN.getlength(t) for t in name_lines] + [fC.getlength(t) for t in cl])
+        report.update(dict(name_size_canvas=nsize * 2, company_size_canvas=csize * 2, company_lines=len(cl),
+                           name_lines=len(name_lines), nomination_lines=len(nl), block_top_y_canvas=top * 2,
+                           max_line_width_canvas=round(2 * mx), box=(x_left, top, x_left + int(mx), y_thread)))
     return res
 
 
@@ -729,74 +743,112 @@ CARD_WORST = dict(name="Константинопольская-Щедрина А
                   nomination="Лучшее решение для доступной среды")
 
 
-def render_k2(seed, card=CARD_DEFAULT, report=None):
-    g, geo, pack = glass_base(seed)
-    interior, emit = build_interior()
-    xx0, xx1 = AX0 - 70, AX0 + AW + 70
-    yy0, yy1 = AY0 - 70, AY0 + AH + 70
+def apply_aperture(g, interior, AX0, AY0, AW, AH, BW=19.0, lamp_hl=True):
+    """Врезает окно с фаской в стекло g (линейный свет, на месте). interior — (AH,AW,3) линейный.
+    Фаска по okno_direction п.3.2: преломлённое зеркально содержимое окна (сжатие 0.8), освещены верх/лево,
+    тень низ/право, срез 45, дисперсия R/B +-3 px холста, внешний срез и блик только на освещённых гранях."""
+    pad_m = 80
+    xx0, xx1 = AX0 - pad_m, AX0 + AW + pad_m
+    yy0, yy1 = max(AY0 - pad_m, 0), min(AY0 + AH + pad_m, H)
     X, Y = np.meshgrid(np.arange(xx0, xx1, dtype=np.float32) + 0.5, np.arange(yy0, yy1, dtype=np.float32) + 0.5)
-    sdf = sdf_rrect(X, Y, AX0, AY0, AX0 + AW, AY0 + AH, 5.0)
-    # нормаль наружу
-    gy_, gx_ = np.gradient(gaussian_filter(sdf, 0.8))
-    gn = np.hypot(gx_, gy_) + 1e-6
-    nx, ny = gx_ / gn, gy_ / gn
-    BW = 14.0
-    t = np.clip(sdf / BW, 0, 1)
     sub = g[yy0:yy1, xx0:xx1].copy()
-    # --- мягкий тёплый спилл света комнаты в толщу стекла снаружи (по рёбрам)
-    inside = np.clip(0.5 - sdf, 0, 1)
-    room_mean = np.array([0.22, 0.12, 0.06], np.float32)
-    sp = gaussian_filter(inside, 26) * (1 - inside)
-    ribmod = (0.45 + 0.9 * geo["hl"][xx0:xx1] * 0.5 + 0.3 * np.cos(2 * np.pi * geo["t"][xx0:xx1]) ** 2)[None, :]
-    sub += (sp * ribmod * 0.10)[..., None] * room_mean[None, None, :] * 2.2
-    # --- фаска: рефракция по нормали, дисперсия, грани
-    ring = (sdf > 0) & (sdf < BW)
-    amp = (1 - t) ** 1.3
-    shift = 34 * amp + 10 * np.sin(np.clip(t, 0, 1) * np.pi)
-    ref = np.empty_like(sub)
-    for c, k in enumerate((0.70, 1.0, 1.38)):             # дисперсия на фаске: умеренно
-        ref[..., c] = sample_xy(sub[..., c:c + 1], (X - xx0) - nx * shift * k, (Y - yy0) - ny * shift * k * 0.55)[..., 0]
-    # интерьер, продлённый за край (для отсвета комнаты в толще фаски)
+    # прямоугольный проём, внутренняя граница без радиуса; фаска со срезом углов 45 градусов (мини-ус)
+    dxl = AX0 - X; dxr = X - (AX0 + AW); dyt = AY0 - Y; dyb = Y - (AY0 + AH)
+    dx = np.maximum(dxl, dxr)          # >0 снаружи по горизонтали
+    dy = np.maximum(dyt, dyb)
+    dd = np.maximum(dx, dy)            # Chebyshev: расстояние от внутреннего края
+    inside = np.clip(0.5 - dd, 0, 1)
+    ring = np.clip(dd + 0.5, 0, 1) * np.clip(BW + 0.5 - dd, 0, 1)
+    horiz = dy > dx                    # грань верх/низ (диагональ ус 45)
+    is_top = horiz & (dyt >= dyb)
+    is_left = (~horiz) & (dxl >= dxr)
+    lit_face = is_top | is_left
+    t = np.clip(dd / BW, 0, 1)
+    # --- интерьер, продлённый зеркально через внутреннюю кромку (сжатие 0.8) — преломлённое содержимое
+    pad = np.pad(interior, ((90, 90), (90, 90), (0, 0)), mode="edge")
+    def mirror_sample(shift_px):
+        d_ = dd * 0.8 + shift_px
+        sx = np.where(horiz, X, np.where(is_left, AX0 + d_, AX0 + AW - d_))
+        sy = np.where(horiz, np.where(is_top, AY0 + d_, AY0 + AH - d_), Y)
+        return sample_xy(pad, sx - AX0 + 90, sy - AY0 + 90)
+    refr = np.empty_like(sub)
+    for c, k_ in enumerate((-1.5, 0.0, 1.5)):               # дисперсия R/B +-3 px холста только в полосе фаски
+        refr[..., c] = mirror_sample(k_)[..., c]
+    # --- грани: освещены верх и лево (×(1+0.55) пик на 30 % ширины, тепло 22 %), тень низ и право (×0.45 → ×0.30)
+    bump = np.exp(-((t - 0.30) / 0.28) ** 2)
+    mul_lit = 1 + 0.55 * bump
+    mul_shadow = 0.45 + (0.30 - 0.45) * t
+    mul = np.where(lit_face, mul_lit, mul_shadow)
+    col = refr * mul[..., None]
+    warm = s2l(hexrgb("#F0D6A0"))
+    lum_c = col.mean(axis=2, keepdims=True) / warm.mean()
+    col = np.where(lit_face[..., None], col * (1 - 0.22) + 0.22 * warm[None, None, :] * lum_c * 1.6, col)
+    # собственная плотность стекла: немного окружающего стекла просвечивает сквозь фаску (иначе выглядит дырой)
+    outer_ref = np.empty_like(sub)
+    for c, k_ in enumerate((0.7, 1.0, 1.4)):
+        sh_ = 18 * (1 - t) * k_
+        sx = X - xx0 + np.where(horiz, 0, np.where(is_left, -sh_, sh_))
+        sy = Y - yy0 + np.where(horiz, np.where(is_top, -sh_, sh_), 0)
+        outer_ref[..., c] = sample_xy(sub[..., c:c + 1], sx, sy)[..., 0]
+    col = col * 0.80 + outer_ref * (0.20 * np.where(lit_face, 1.0, 0.55))[..., None]
+    # внешний срез: линия 2 px мастера #F0D6A0 50 % только на освещённых гранях
+    cut = np.exp(-((dd - (BW - 1.0)) / 0.9) ** 2) * lit_face * 0.50
+    col += cut[..., None] * warm[None, None, :] * 0.85
+    # блик на верхней грани: длина ~5 wb, толщина 0.6 wb, начало в 3 wb от левого угла, +40 % #F0D6A0
+    xl = (X - AX0)
+    hl_x = np.exp(-(((xl - (3 * BW + 2.5 * BW)) / (2.5 * BW)) ** 2))
+    hl_y = np.exp(-(((dd - 0.36 * BW) / (0.30 * BW)) ** 2))
+    glint = hl_x * hl_y * is_top * 0.40
+    col += glint[..., None] * warm[None, None, :] * 1.0
+    out = sub * (1 - ring[..., None]) + col * ring[..., None]
+    out = out * (1 - inside[..., None])
     ii = np.zeros_like(sub)
     ii[AY0 - yy0:AY0 - yy0 + AH, AX0 - xx0:AX0 - xx0 + AW] = interior
-    pad = np.pad(interior, ((70, 70), (70, 70), (0, 0)), mode="edge")
-    room_e = sample_xy(pad, (X - AX0 + 70) - nx * (sdf + 6) * 1.0, (Y - AY0 + 70) - ny * (sdf + 6) * 1.0)
-    # лампа (мировые x,y) для направления света на фаске
-    Ld = np.array([AX0 + LAMP[0] - X, AY0 + LAMP[1] - Y])
-    Lm = np.hypot(Ld[0], Ld[1]) + 1e-6
-    ndl = np.clip(nx * Ld[0] / Lm + ny * Ld[1] / Lm, -1, 1)
-    topleft = np.clip(-0.75 * ny - 0.55 * nx, 0, 1)             # грани, смотрящие на софтбокс сверху-слева
-    facetA = (t < 0.55)
-    shade = np.where(facetA, 0.80 + 0.30 * np.clip(ndl, 0, 1), 1.12 + 0.25 * np.clip(ndl, 0, 1))
-    crease = np.exp(-((t - 0.55) / 0.04) ** 2)
-    lampfall = np.exp(-(Lm / 420.0))
-    kerb = np.exp(-((sdf - 0.9) / 0.85) ** 2) * (0.30 + 0.70 * lampfall) * (0.40 + 0.60 * np.clip(ndl + 0.5, 0, 1))
-    outer = np.exp(-((sdf - BW + 1.3) / 0.75) ** 2) * (0.05 + 0.7 * topleft)
-    # собственная отражённость фаски: мягкий холодный свет сверху-слева, чтобы кромка читалась как стекло
-    glassy = 0.0 * topleft
-    ring_col = ref * (shade * 1.35)[..., None] * (1 - 0.60 * crease[..., None])
-    ring_col += room_e * ((1 - t) ** 1.1 * 0.55)[..., None]
-    ring_col += glassy[..., None] * s2l(np.array([0.78, 0.86, 0.84], np.float32))[None, None, :]
-    ring_col += kerb[..., None] * s2l(BRASS_LIGHT)[None, None, :] * 0.85
-    ring_col += (crease * 0.012 * (0.4 + lampfall))[..., None] * s2l(WARM_LAMP)[None, None, :]
-    ring_col += outer[..., None] * s2l(np.array([0.80, 0.88, 0.86], np.float32))[None, None, :] * 0.30
-    ringm = np.clip(1 - np.clip(sdf - BW + 0.5, 0, 1), 0, 1) * np.clip(sdf + 0.5, 0, 1)
-    out = sub * (1 - ringm[..., None]) + ring_col * ringm[..., None]
-    # --- интерьер внутри проёма
-    inn = inside[..., None]
-    out = out * (1 - inn) + ii * inn
+    out = out + ii * inside[..., None]
     g[yy0:yy1, xx0:xx1] = out
-    # --- нить света от кромки консоли через стык к карточке (в стекле: рифлёная, неровная)
-    xs = np.arange(0, AX0 - int(BW) + 2, dtype=np.float32)
-    yy_ = np.arange(H, dtype=np.float32)[:, None]
-    rl = (0.30 + 0.70 * np.clip(0.55 * geo["hl"][:len(xs)] + 0.55 * (np.cos(2 * np.pi * geo["t"][:len(xs)]) ** 2), 0, 1.4))
-    wob = 0.0 * geo["t"][:len(xs)]
-    fall = 0.20 + 0.80 * np.exp(-((AX0 - xs) / 230.0))
-    fall = np.where(xs < 66, fall * np.clip((xs - 52) / 14.0, 0, 1) + 0, fall)          # конец у левого поля карточки
-    prof = np.exp(-((yy_ - (THREAD_Y + 0.8 + wob[None, :])) / 1.15) ** 2)
-    thr = prof * (rl * fall)[None, :]
-    g[:, :len(xs)] += thr[..., None] * s2l(BRASS_LIGHT)[None, None, :] * 0.70
+    return g
+
+
+def render_k2(seed, card=CARD_DEFAULT, report=None):
+    # --- след окна: слева за рамкой стекло слабее (direction п.2.5), длина ~400 мастера, высота 0.8 окна
+    yy_, xx_ = np.mgrid[0:H, 0:W].astype(np.float32)
+    trail = np.clip((AX0 - xx_) / 380.0, 0, 1) * (xx_ < AX0)
+    trail = (1 - trail) * (xx_ < AX0) * (xx_ > AX0 - 400)
+    vy = np.clip(1 - np.abs(yy_ - (AY0 + AH / 2)) / (0.40 * AH), 0, 1)
+    vy = np.clip(vy * 4, 0, 1)
+    tr = trail * vy
+    fade = 1 - 0.40 * tr
+    g, geo, pack = glass_base(seed, fade=fade.astype(np.float32))
+    interior, emit = build_interior()
+    g = apply_aperture(g, interior, AX0, AY0, AW, AH)
+    # --- нить: 8 px холста (4 мастера), тело #C9A961, ядро #F0D6A0 3 px холста; от кромки консоли через стык,
+    #     под блоком текста на всю его ширину, рифлёная в стекле, без ореола
+    xs = np.arange(0, AX0 - int(BW) + 3, dtype=np.float32)
+    yy2 = np.arange(H, dtype=np.float32)[:, None]
+    n = len(xs)
+    rl = 0.40 + 0.60 * np.clip(0.55 * geo["hl"][:n] + 0.55 * (np.cos(2 * np.pi * geo["t"][:n]) ** 2), 0, 1.3)
+    fall = 0.28 + 0.72 * np.exp(-((AX0 - xs) / 260.0))
+    body_p = np.exp(-((yy2 - (THREAD_Y + 0.8)) / 2.0) ** 4 ) 
+    core_p = np.exp(-((yy2 - (THREAD_Y + 0.8)) / 0.9) ** 2)
+    k_body = s2l(hexrgb("#C9A961")) * 0.55
+    k_core = s2l(hexrgb("#F0D6A0")) * 0.85
+    amp = (rl * fall)[None, :]
+    g[:, :n] += (body_p * amp)[..., None] * k_body[None, None, :] + (core_p * amp)[..., None] * k_core[None, None, :]
+    # --- мягкая овальная маска под карточкой: подложка притушена (контраст текста >= 7:1), не плашка
+    tmp = {}
+    g_txt = draw_card(g, card, report=tmp)
+    bx0, by0, bx1, by1 = tmp["box"]
+    cxm, cym = (bx0 + bx1) / 2, (by0 + by1) / 2
+    ell = np.clip(1.25 - np.hypot((xx_ - cxm) / ((bx1 - bx0) / 2 + 60), (yy_ - cym) / ((by1 - by0) / 2 + 55)), 0, 1)
+    ell = np.clip(ell / 0.45, 0, 1)
+    ell = ell * ell * (3 - 2 * ell)
+    # затемняем всё, кроме самой нити (линейка остаётся)
+    keep = np.exp(-((yy2 - (THREAD_Y + 0.8)) / 3.0) ** 2) * np.ones((1, W), np.float32)
+    dim = 1 - 0.55 * ell * (1 - keep)
+    g = g * dim[..., None]
     g = draw_card(g, card, report=report)
+    if report is not None:
+        report["dim_oval_canvas"] = [round(2 * (bx0 - 60)), round(2 * (bx1 + 60))]
     return finish(g, seed + 10)
 
 
