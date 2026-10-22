@@ -37,10 +37,10 @@ def hexrgb(h):
 
 C_DARK = hexrgb("#002935")      # цвет тьмы/тени
 C_PRIMARY = hexrgb("#0B3139")
-C_SECOND = hexrgb("#2B4F52")    # стена фасада в свету
+C_SECOND = hexrgb("#2F4A4B")    # стена фасада в свету (#2B4F52 бренда, чуть десатурирован)
 C_TEXT = hexrgb("#EFE9DC")      # тёплый белый (чуть ниже F4EFE4, чтобы не пересветить)
-WARM_LAMP = np.array([0.92, 0.64, 0.36], np.float32)   # ~2800 K, дисплейные значения
-WARM_HOT = np.array([0.95, 0.80, 0.55], np.float32)    # ядро лампы ~3000 K
+WARM_LAMP = np.array([0.90, 0.64, 0.38], np.float32)   # ~2800 K, дисплейные значения
+WARM_HOT = np.array([0.95, 0.82, 0.62], np.float32)    # ядро лампы ~3000 K
 BRASS_LIGHT = np.array([0.93, 0.76, 0.50], np.float32)  # латунь только как блик
 
 FONT_NAME = "/usr/share/fonts/opentype/inter/InterDisplay-Medium.otf"   # ВРЕМЕННЫЙ шрифт
@@ -50,13 +50,14 @@ FONT_BODY = "/usr/share/fonts/opentype/inter/Inter-Regular.otf"
 P = dict(
     rib_pitch=26.0,       # шаг рифления, мастер px (52 px холста)
     rib_jitter=0.07,      # разброс ширины ребра
-    rib_amp_gain=2.4,     # A = gain * p / (2*pi): производная смещения от -1.4 до 3.4
+    rib_amp_gain=1.9,     # A = gain*p/(2*pi): производная смещения 1-gain..1+gain
     rib_amp_jitter=0.10,
     disp=0.12,            # дисперсия: R -12 %, B +12 % амплитуды смещения
-    blur_box=24,          # расфокус по вертикали: бокс (px мастера) ...
-    blur_sigma=7.0,       # ... и гаусс
+    blur_box=64,          # расфокус по вертикали: бокс (px мастера) ...
+    blur_sigma=14.0,       # ... и гаусс
     grain=1.7,            # зерно, LSB
     peak_cap=0.93,        # потолок канала после roll-off (237/255)
+    pre_sigma=4.0,        # горизонтальный предфильтр мира (мастер px): мелкая фактура фасада не штрихкодит
     seed=2611,
 )
 
@@ -136,7 +137,7 @@ def lit_window_template():
     w, h = LIT_W, LIT_H
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
     u, v = xx / w, yy / h
-    base = np.array([0.80, 0.52, 0.28], np.float32)
+    base = np.array([0.82, 0.58, 0.35], np.float32)
     img = np.ones((h, w, 3), np.float32) * base
     img *= (0.92 + 0.14 * (1 - v))[..., None]                 # потолок чуть темнее низа? свет сверху — ярче вверху
     curtain = np.clip((0.34 - u) / 0.08, 0, 1)
@@ -159,8 +160,8 @@ def build_facade(seed=11):
     rs = np.random.RandomState(seed)
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     # свет на стене: бассейн в центре кадра, к краям и верху темнее; низ темнее (цоколь в тени)
-    ix = 0.60 + 0.40 * np.clip(np.cos((xx / W - 0.5) * np.pi * 0.96), 0, 1) ** 1.2
-    iy = np.interp(yy[:, 0], [0, 0.12 * H, 0.50 * H, 0.82 * H, H], [0.50, 0.78, 1.12, 0.90, 0.58])
+    ix = 0.45 + 0.55 * np.clip(np.cos((xx / W - 0.5) * np.pi * 0.96), 0, 1) ** 1.2
+    iy = np.interp(yy[:, 0], [0, 0.12 * H, 0.50 * H, 0.82 * H, H], [0.38, 0.62, 1.05, 0.80, 0.42])
     illum = ix * iy[:, None]
     stucco = 1 + 0.045 * smooth_noise((H, W), 0.8, seed + 1) + 0.07 * smooth_noise((H, W), 7, seed + 2)
     # крупное «погодное» пятно неравномерности
@@ -171,9 +172,9 @@ def build_facade(seed=11):
     # пилястры через каждые 4 оси: светлая грань слева, тень справа
     for j in range(0, int(W / (PITCH_X * 4)) + 2):
         x = PITCH_X * 4 * j
-        paint(img, (x - 8, 36, x + 8, H), lambda sl: img[sl] * 1.20)
-        paint(img, (x - 8, 36, x - 5, H), lambda sl: img[sl] * 1.12)
-        paint(img, (x + 5, 36, x + 11, H), lambda sl: img[sl] * 0.62, 0.8)
+        paint(img, (x - 8, 36, x + 8, H), lambda sl: img[sl] * 1.10)
+        paint(img, (x - 8, 36, x - 5, H), lambda sl: img[sl] * 1.06)
+        paint(img, (x + 5, 36, x + 11, H), lambda sl: img[sl] * 0.80, 0.8)
     # карниз: фриз, губа, падающая тень
     paint(img, (0, 0, W, 26), lambda sl: img[sl] * 1.02)
     paint(img, (0, 26, W, 33), lambda sl: img[sl] * 1.42)
@@ -188,7 +189,7 @@ def build_facade(seed=11):
     tpl = lit_window_template()
     lit = {(k, r): s for k, r, s in sector_slots()}
     emis = np.zeros((H, W), np.float32)
-    wcol = np.array([0.012, 0.060, 0.070], np.float32)
+    wcol = np.array([0.050, 0.140, 0.150], np.float32)
     nk = int(W / PITCH_X) + 1
     for r in range(7):
         for k in range(nk):
@@ -202,8 +203,8 @@ def build_facade(seed=11):
                 paint(img, (cx - 9, y1 + 12, cx + 9, y1 + 12 + ln),
                       lambda sl: img[sl] * (1 - 0.20 * sl_s * np.linspace(1, 0.1, sl[0].stop - sl[0].start)[:, None, None]), 1.0)
             # наличник, подоконник
-            paint(img, (x0 - 4, y0 - 4, x1 + 4, y1 + 4), lambda sl: img[sl] * 1.30)
-            paint(img, (x0 - 7, y1 + 4, x1 + 7, y1 + 8), lambda sl: img[sl] * 1.55)
+            paint(img, (x0 - 4, y0 - 4, x1 + 4, y1 + 4), lambda sl: img[sl] * 1.08)
+            paint(img, (x0 - 7, y1 + 4, x1 + 7, y1 + 8), lambda sl: img[sl] * 1.25)
             paint(img, (x0 - 6, y1 + 8, x1 + 6, y1 + 15),
                   lambda sl: img[sl] * np.linspace(0.45, 0.9, sl[0].stop - sl[0].start)[:, None, None], 0.9)
             if (k, r) in lit:
@@ -285,7 +286,7 @@ def sample_x(img, xs):
 def flute(world_lin, geo, fade=None, blur_scale=None):
     """Рифлёное стекло: смещение по синусоиде + дисперсия + расфокус по вертикали.
     world_lin — линейный свет (H,W,3). fade (H,W) 0..1: 1 — полное стекло, 0 — чисто."""
-    pre = gaussian_filter1d(world_lin, 1.3, axis=1)                 # против алиасинга в зонах сжатия
+    pre = gaussian_filter1d(world_lin, P['pre_sigma'], axis=1)                 # против алиасинга в зонах сжатия
     d = disp_field(geo, fade)
     xs = np.arange(W, dtype=np.float32)[None, :] + 0.5 + d
     out = np.empty_like(world_lin)
@@ -346,6 +347,8 @@ def glass_surface(geo, seed, strength=None):
         dr.line([(x, y), (x + np.cos(ang) * ln, y + np.sin(ang) * ln)], fill=int(15 + rs.rand() * 35), width=1)
     scr = gaussian_filter(np.asarray(sc, np.float32) / 255.0, 0.5)
     add = add + 0.012 * scr * refl
+    sheen = 1 + 0.16 * np.exp(-(((xx + 0.9 * yy) / W - 0.30) / 0.22) ** 2) - 0.08 * (xx / W)
+    mul = mul * sheen
     return add.astype(np.float32), mul.astype(np.float32)
 
 
@@ -359,11 +362,11 @@ def key_overlay(x_c, y_tip):
     big = Image.new("L", (80 * ss, int((y_tip + 30) * ss)), 0)
     d = ImageDraw.Draw(big)
     cx = 40 * ss
-    d.rectangle([cx - 2.2 * ss, 0, cx + 2.2 * ss, y_tip * ss], fill=255)         # стержень 4.4 px
+    d.rectangle([cx - 3.6 * ss, 0, cx + 3.6 * ss, y_tip * ss], fill=255)         # стержень 4.4 px
     # бородка: ступенчатый зубец ниже стержня справа
-    d.rectangle([cx + 2.2 * ss, (y_tip - 20) * ss, cx + 12 * ss, (y_tip) * ss], fill=255)
-    d.rectangle([cx + 2.2 * ss, (y_tip - 20) * ss, cx + 12 * ss, (y_tip - 14) * ss], fill=0)
-    d.rectangle([cx + 2.2 * ss, (y_tip - 9) * ss, cx + 8 * ss, (y_tip - 4) * ss], fill=0)
+    d.rectangle([cx + 3.6 * ss, (y_tip - 20) * ss, cx + 14 * ss, (y_tip) * ss], fill=255)
+    d.rectangle([cx + 3.6 * ss, (y_tip - 20) * ss, cx + 14 * ss, (y_tip - 14) * ss], fill=0)
+    d.rectangle([cx + 3.6 * ss, (y_tip - 9) * ss, cx + 9 * ss, (y_tip - 4) * ss], fill=0)
     small = np.asarray(big.resize((80, int(y_tip + 30)), Image.LANCZOS), np.float32) / 255.0
     return small, x_c - 40
 
@@ -418,8 +421,8 @@ def render_k1(seed):
     # латунь: тусклый стержень, блик по левому краю и точка на кончике бородки
     col = np.zeros((h_, w_, 3), np.float32)
     xs = np.arange(w_)[None, :] - 40
-    edge = np.exp(-((xs + 1.6) / 0.9) ** 2)
-    shade = (0.10 + 0.55 * edge) * np.linspace(0.45, 1.0, h_)[:, None]
+    edge = np.exp(-((xs + 2.2) / 1.0) ** 2)
+    shade = (0.22 + 1.0 * edge) * np.linspace(0.45, 1.0, h_)[:, None]
     col += s2l(BRASS_LIGHT)[None, None, :] * shade[..., None] * 0.55
     sub = g[0:h_, int(ox):int(ox) + w_]
     g[0:h_, int(ox):int(ox) + w_] = sub * (1 - ky[..., None]) + col * ky[..., None]
