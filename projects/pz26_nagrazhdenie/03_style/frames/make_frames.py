@@ -546,7 +546,7 @@ def prof_world(xl, xr, pk_x):
 
 
 # ================================================================== S1 (+ широкий вариант для S4)
-S1P = dict(seam=2.3, K=24.0, rim=25.0, fill=0.2, fillL=5000.0, fstop=4.0, exposure=0.0, ghost_light=12.0)
+S1P = dict(seam=1.55, K=36.0, rim=25.0, fill=0.2, fillL=5000.0, fstop=4.0, exposure=0.0, ghost_light=12.0)
 import json
 S1P.update(json.loads(A.P))
 
@@ -563,7 +563,7 @@ def scene_s1(W, H, samples, P, wide=False):
         for sgn in (-1, 1):
             xa, xb = (24.4, 70.0) if sgn > 0 else (-70.0, -24.4)
             for nm, z0, z1 in (("sideU", GAP, 8.0), ("sideD", -9.0, -GAP)):
-                o = box(nm, xa, xb, 0.0, 2.2, z0, z1, M["body"]); bevel(o)
+                o = box(nm, xa, xb, 0.0, 2.2, z0, z1, make_matte("side", "#10181B", 0.5, 0.5)); bevel(o)
         x0, x1 = -35.0, 35.0
         pf = prof_world(-25.0, 25.0, -6.0)
         def prof_x(x):
@@ -608,7 +608,7 @@ def scene_s2(W, H, samples, P):
 
 
 # ================================================================== S3 «Ключ входит»
-S3P = dict(seam=0.07, K=24.0, rim=160.0, fill=0.005, fillL=2200.0, keyfill=2000.0, keyfront=700.0, tip2=150.0, fstop=4.0, exposure=0.0, hole=0.15, tip=900.0)
+S3P = dict(seam=0.055, K=24.0, rim=160.0, fill=0.005, fillL=4500.0, keyfill=2000.0, keyfront=1300.0, tip2=150.0, fstop=4.0, exposure=0.0, hole=0.05, tip=300.0)
 R_PLUG = 2.75
 Z_AX = -R_PLUG
 X_TIP = -1.7
@@ -641,7 +641,7 @@ def scene_s3(W, H_, samples, P):
     # скважина изнутри: слабое свечение стенки щели + крошечный источник в устье щели
     wall = box("hole_glow", 0.03, 4.0, 0.33, 0.335, Z_AX - 1.4, Z_AX + 1.4, make_emit("hole", P["hole"], 0, 4, prof_x=lambda x: 1.0, K=1.0))
     tl = area_light("tip_light", (0.05, 0.0, Z_AX - 0.1), (0, 90, 0), 2.3, 0.5, P["tip"], lin("#FFE9C2"), 140)
-    tl2 = area_light("tip_light2", (0.6, -0.9, Z_AX + 0.9), (0, 0, 0), 1.0, 1.0, P.get("tip2", 0), lin("#FFE9C2"), 140); aim(tl2, (-1.7, 0, Z_AX + 0.5))
+    tl2 = area_light("tip_light2", (-0.6, -3.0, Z_AX + 0.7), (0, 0, 0), 0.7, 0.7, P.get("tip2", 0), lin("#FFE9C2"), 140); aim(tl2, (-2.2, 0, Z_AX + 0.2))
     common_lights(P, rim_loc=(-10, 6.0, 4.5), rim_tgt=(-8, 0, -1.5), fill_tgt=(-3, 0, -2.5))
     if P.get("keyfill", 0):
         kf = area_light("keyfill", (-18, 1.5, 9.0), (0, 0, 0), 24, 3, P["keyfill"], (1.0, 0.90, 0.78), 100); aim(kf, (-10, 0, -1.5))
