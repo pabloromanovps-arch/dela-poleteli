@@ -57,7 +57,8 @@ P = dict(
     blur_sigma=14.0,       # ... и гаусс
     grain=1.7,            # зерно, LSB
     peak_cap=0.93,        # потолок канала после roll-off (237/255)
-    pre_sigma=4.0,        # горизонтальный предфильтр мира (мастер px): мелкая фактура фасада не штрихкодит
+    pre_sigma=9.0,
+    pre_sigma_lit=2.0,        # горизонтальный предфильтр мира (мастер px): мелкая фактура фасада не штрихкодит
     seed=2611,
 )
 
@@ -156,7 +157,7 @@ def lit_window_template():
 
 
 def build_facade(seed=11):
-    """Резкий мир. Возвращает (дисплейный RGB 0..1, маска огней 0..1)."""
+    """Резкий мир. Возвращает (база: стена+тёмные окна, дисплейный RGB; маска огней; светящиеся окна, дисплейный RGB)."""
     rs = np.random.RandomState(seed)
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     # свет на стене: бассейн в центре кадра, к краям и верху темнее; низ темнее (цоколь в тени)
@@ -189,6 +190,7 @@ def build_facade(seed=11):
     tpl = lit_window_template()
     lit = {(k, r): s for k, r, s in sector_slots()}
     emis = np.zeros((H, W), np.float32)
+    emi = np.zeros((H, W, 3), np.float32)
     wcol = np.array([0.050, 0.140, 0.150], np.float32)
     nk = int(W / PITCH_X) + 1
     for r in range(7):
@@ -207,12 +209,13 @@ def build_facade(seed=11):
             paint(img, (x0 - 7, y1 + 4, x1 + 7, y1 + 8), lambda sl: img[sl] * 1.25)
             paint(img, (x0 - 6, y1 + 8, x1 + 6, y1 + 15),
                   lambda sl: img[sl] * np.linspace(0.45, 0.9, sl[0].stop - sl[0].start)[:, None, None], 0.9)
-            if (k, r) in lit:
+            is_lit = (k, r) in lit
+            if is_lit:
                 v = 1.0 + 0.015 * rs.randn()
-                paint(img, (x0, y0, x1, y1), lambda sl, v=v: _tpl_slice(tpl, sl, x0, y0) * v)
                 sl2, c2 = rect_cov(x0, y0, x1, y1)
+                emi[sl2] += _tpl_slice(tpl, sl2, x0, y0) * v * c2[..., None]
                 emis[sl2] = np.maximum(emis[sl2], c2)
-            else:
+            if True:
                 refl = 0.8 + 0.4 * rs.rand()
                 def glass(sl, refl=refl):
                     hh = sl[0].stop - sl[0].start
@@ -232,7 +235,7 @@ def build_facade(seed=11):
     warm = s2l(WARM_LAMP)[None, None, :]
     lin += wl * warm * (0.55 * spill * (1 - emis))[..., None] * 2.0
     img = l2s(lin).astype(np.float32)
-    return img, emis
+    return img, emis, emi
 
 
 def _tpl_slice(tpl, sl, x0, y0):
@@ -283,10 +286,12 @@ def sample_x(img, xs):
     return img[rows, x0] * (1 - f) + img[rows, x0 + 1] * f
 
 
-def flute(world_lin, geo, fade=None, blur_scale=None):
+def flute(world_lin, geo, fade=None, emit_lin=None):
     """Рифлёное стекло: смещение по синусоиде + дисперсия + расфокус по вертикали.
     world_lin — линейный свет (H,W,3). fade (H,W) 0..1: 1 — полное стекло, 0 — чисто."""
-    pre = gaussian_filter1d(world_lin, P['pre_sigma'], axis=1)                 # против алиасинга в зонах сжатия
+    pre = gaussian_filter1d(world_lin, P['pre_sigma'], axis=1)   # мелкая фактура фасада (стена, переплёты) смазана до рифления
+    if emit_lin is not None:                                    # огни окон — почти резкие, чтобы рифление рвало их на штрихи
+        pre = pre + gaussian_filter1d(emit_lin, P['pre_sigma_lit'], axis=1)
     d = disp_field(geo, fade)
     xs = np.arange(W, dtype=np.float32)[None, :] + 0.5 + d
     out = np.empty_like(world_lin)
@@ -405,10 +410,10 @@ def save_pair(arr, outdir, name):
 # K1
 # ============================================================================
 def render_k1(seed):
-    world, emis = build_facade()
+    world, emis, emi = build_facade()
     geo = rib_geometry(seed)
-    lin = s2l(world)
-    g = flute(lin, geo)
+    lin = s2l(world) * (1 - emis[..., None])
+    g = flute(lin, geo, emit_lin=s2l(emi))
     add, mul = glass_surface(geo, seed + 5)
     g = g * mul[..., None] + add[..., None] * np.array([0.85, 1.0, 1.0], np.float32)
     # ключ: перед стеклом, тонкий, мало света
