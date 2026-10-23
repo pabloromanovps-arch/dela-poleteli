@@ -25,3 +25,6 @@ projects/*/ai/shots/**/*.mp4
 # книги владельца — не в git (авторские права)
 references/books/*
 !references/books/.gitkeep
+
+references/_inbox/*
+!references/_inbox/.gitkeep

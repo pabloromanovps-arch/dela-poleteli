@@ -31,3 +31,12 @@
 
 ## Экономия токенов
 См. `references/token_tools.md`: markitdown и graphify поставить локально, context-mode и headroom — по инструкции там; перед установкой проверить README и лицензию.
+
+
+## Переезд с облака на компьютер владельца (полный набор)
+Владелец хочет работать локально. Порядок для локального Claude:
+1. `git pull`, затем `python tools/setup_local.py` (ставит markitdown, graphify, faster-whisper, yt-dlp, librosa и др.; проверяет ffmpeg, node, git).
+2. context-mode: `/plugin marketplace add mksglu/claude-context-mode`, затем `/plugin install context-mode@claude-context-mode`. Перед headroom открыть README репозитория и показать владельцу, что он меняет.
+3. Изучение сайтов и видео: `python tools/video_notes.py <файл или ссылка> --name <кейс>` даёт лист кадров и расшифровку речи в `references/cases/`. Заметку дописать (что увидел, что берём), статус ВИДЕЛ. Сами ролики в git не кладём (`references/_inbox/`).
+4. Сайты читать через WebFetch или браузер. Каждый разбор писать в `references/cases/<имя>.md`.
+5. Сервисы генерации (картинки, видео): спросить владельца, какие у него есть, ключи хранить в `studio.config.json` (в git не попадает), не в репозитории.
