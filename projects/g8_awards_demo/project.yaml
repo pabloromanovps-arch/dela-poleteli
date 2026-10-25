@@ -1,0 +1,18 @@
+id: "g8_awards_demo"
+title: "G8: церемония на экране 15000×3500 (гипотетический)"
+client: "G8 (гипотеза)"
+screen: "custom"
+brand: ""          # brands/<client>, пусто — без бренда
+created: "2026-10-25"
+stage: 00_brief
+tasks: []          # передача работы между ролями — см. agency-orchestration
+gates:            # approved: true ставит ЧЕЛОВЕК после просмотра артефакта
+  00_brief:       {approved: false, by: "", date: ""}
+  01_research:    {approved: false, by: "", date: ""}
+  02_concept:     {approved: false, by: "", date: "", chosen: ""}
+  03_style:       {approved: false, by: "", date: ""}
+  04_board:       {approved: false, by: "", date: ""}
+  05_plan:        {approved: false, by: "", date: ""}
+  06_build:       {approved: false, by: "", date: ""}
+  07_review:      {approved: false, by: "", date: ""}
+  08_delivery:    {approved: false, by: "", date: ""}

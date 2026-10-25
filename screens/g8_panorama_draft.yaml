@@ -1,0 +1,18 @@
+# ЧЕРНОВИК. Единственная известная цифра — 15000×3500 (со слов владельца). Остальное допущения, подтвердить у площадки.
+id: g8_panorama_draft
+title: "G8: панорамный экран 15000×3500 (черновик)"
+status: draft
+canvas: {width: 15000, height: 3500}      # 4,29:1
+fps: 30                                   # допущение
+pixel_pitch_mm: null                      # неизвестно
+viewing_distance_m: {near: null, far: null}
+safe_area: {x: 1500, y: 350, w: 12000, h: 2800}   # допущение: 10% по краям
+center_zone: {x: 4500, y: 0, w: 6000, h: 3500}    # допущение: основное действие и текст
+dead_zones: []                            # стыки секций неизвестны, запросить пиксельную карту
+outputs:                                  # допущение: резка на 4 полосы для медиасервера
+  - {name: S1, x: 0, y: 0, w: 3750, h: 3500}
+  - {name: S2, x: 3750, y: 0, w: 3750, h: 3500}
+  - {name: S3, x: 7500, y: 0, w: 3750, h: 3500}
+  - {name: S4, x: 11250, y: 0, w: 3750, h: 3500}
+media_server: null
+delivery: {codec: hap_q, container: mov, alpha: false, color: rec709, bit_depth: 8, naming: "<project>_<output>_v<NN>"}
