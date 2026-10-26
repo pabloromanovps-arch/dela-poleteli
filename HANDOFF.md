@@ -40,3 +40,8 @@
 3. Изучение сайтов и видео: `python tools/video_notes.py <файл или ссылка> --name <кейс>` даёт лист кадров и расшифровку речи в `references/cases/`. Заметку дописать (что увидел, что берём), статус ВИДЕЛ. Сами ролики в git не кладём (`references/_inbox/`).
 4. Сайты читать через WebFetch или браузер. Каждый разбор писать в `references/cases/<имя>.md`.
 5. Сервисы генерации (картинки, видео): спросить владельца, какие у него есть, ключи хранить в `studio.config.json` (в git не попадает), не в репозитории.
+
+
+## Windows и ComfyUI
+- На Windows всё то же: Python, ffmpeg, Node, git ставятся через winget (`winget install Python.Python.3.12 Gyan.FFmpeg OpenJS.NodeJS Git.Git`), затем `python tools/setup_local.py` и `python tools/run.py doctor`.
+- ComfyUI: `tools/comfy/comfy_run.py` — пакетная генерация из таблицы (workflow в API-формате + карта колонок + CSV), результат в `ai/renders/`, запись в `ai/prompts/library.yaml`. Пример: `examples/comfy/`. Проверено только на имитации сервера, на настоящем ComfyUI не запускалось. Первым делом: `python tools/comfy/comfy_run.py --dry-run ...` и один реальный прогон.
